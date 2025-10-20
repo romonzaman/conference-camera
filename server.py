@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import time
+import base64
 from typing import Dict, Set, Optional
 import numpy as np
 import cv2
@@ -28,6 +29,11 @@ audio_levels: Dict[str, Dict] = {}
 active_speaker_id: Optional[str] = None
 server_video_track = None
 client_info: Dict[str, Dict] = {}  # Store client name and channel info
+viewer_websockets: Set[web.WebSocketResponse] = set()  # WebSocket connections for viewers
+
+# Speaker detection state
+last_speaker_change_time = 0
+speaker_stability_delay = 2.0  # Wait 2 seconds before switching speakers
 
 # Configuration
 AUDIO_THRESHOLD = 500
@@ -64,10 +70,18 @@ class VideoTransformTrack(VideoStreamTrack):
                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         
         # Convert to proper video frame format
-        self.blank_frame = av.VideoFrame.from_ndarray(frame, format="bgr24")
+        try:
+            self.blank_frame = av.VideoFrame.from_ndarray(frame, format="bgr24")
+        except Exception as e:
+            logger.error(f"Error creating blank frame: {e}")
+            # Fallback: create a simple frame
+            self.blank_frame = None
     
     def set_active_speaker(self, speaker_id: str):
         """Switch to active speaker's video track"""
+        logger.info(f"Setting active speaker: {speaker_id}")
+        logger.info(f"Available video tracks: {list(video_tracks.keys())}")
+        
         if speaker_id and speaker_id in video_tracks:
             self.current_track = video_tracks[speaker_id]
             logger.info(f"Switched to speaker: {speaker_id}")
@@ -83,15 +97,82 @@ class VideoTransformTrack(VideoStreamTrack):
         if self.current_track:
             try:
                 frame = await self.current_track.recv()
-                logger.debug(f"Received frame from active speaker: {self.current_track}")
+                logger.debug(f"Received frame from active speaker")
+                
+                # Broadcast frame to WebSocket viewers
+                await self.broadcast_frame_to_viewers(frame)
+                
                 return frame
             except Exception as e:
                 logger.error(f"Error receiving frame from active speaker: {e}")
                 self.current_track = None
         
-        # Return blank frame if no active speaker
-        logger.debug("No active speaker, returning blank frame")
-        return self.blank_frame
+        # If no active speaker, try to get any available video track
+        if not self.current_track and video_tracks:
+            # Get the first available video track
+            first_client = list(video_tracks.keys())[0]
+            self.current_track = video_tracks[first_client]
+            logger.info(f"Using first available video track from {first_client}")
+            try:
+                frame = await self.current_track.recv()
+                logger.debug(f"Received frame from fallback track")
+                
+                # Broadcast frame to WebSocket viewers
+                await self.broadcast_frame_to_viewers(frame)
+                
+                return frame
+            except Exception as e:
+                logger.error(f"Error receiving frame from fallback track: {e}")
+                self.current_track = None
+        
+        # Return blank frame if no video available
+        logger.debug("No video available, returning blank frame")
+        if self.blank_frame:
+            return self.blank_frame
+        else:
+            # Create a simple fallback frame
+            frame = np.zeros((VIDEO_HEIGHT, VIDEO_WIDTH, 3), dtype=np.uint8)
+            frame.fill(128)  # Gray background
+            try:
+                return av.VideoFrame.from_ndarray(frame, format="bgr24")
+            except Exception as e:
+                logger.error(f"Error creating fallback frame: {e}")
+                # Return a basic frame
+                return av.VideoFrame.from_ndarray(frame, format="rgb24")
+    
+    async def broadcast_frame_to_viewers(self, frame):
+        """Broadcast video frame to WebSocket viewers"""
+        if not viewer_websockets:
+            return
+        
+        try:
+            # Convert frame to JPEG
+            frame_array = frame.to_ndarray(format="bgr24")
+            _, buffer = cv2.imencode('.jpg', frame_array, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            frame_data = base64.b64encode(buffer).decode('utf-8')
+            
+            # Send to all connected viewers
+            message = json.dumps({
+                'type': 'video_frame',
+                'data': frame_data,
+                'timestamp': time.time()
+            })
+            
+            # Send to all viewers concurrently
+            disconnected_viewers = set()
+            for ws in viewer_websockets:
+                try:
+                    await ws.send_str(message)
+                except Exception as e:
+                    logger.error(f"Error sending to viewer: {e}")
+                    disconnected_viewers.add(ws)
+            
+            # Remove disconnected viewers
+            for ws in disconnected_viewers:
+                viewer_websockets.discard(ws)
+                
+        except Exception as e:
+            logger.error(f"Error broadcasting frame: {e}")
 
 
 
@@ -108,26 +189,29 @@ async def cleanup_client(client_id: str):
     """Clean up resources for disconnected client"""
     global active_speaker_id
     
-    # Remove from video tracks
-    if client_id in video_tracks:
-        del video_tracks[client_id]
-    
-    # Remove from audio levels
-    if client_id in audio_levels:
-        del audio_levels[client_id]
-    
-    # Remove from client info
-    if client_id in client_info:
-        client_name = client_info[client_id]['name']
-        del client_info[client_id]
-        logger.info(f"Client {client_name} ({client_id}) disconnected")
-    
-    # Update active speaker if this was the active speaker
-    if active_speaker_id == client_id:
-        active_speaker_id = None
-        logger.info(f"Active speaker {client_id} disconnected")
-    
-    logger.info(f"Cleaned up client: {client_id}")
+    try:
+        # Remove from video tracks
+        if client_id in video_tracks:
+            del video_tracks[client_id]
+        
+        # Remove from audio levels
+        if client_id in audio_levels:
+            del audio_levels[client_id]
+        
+        # Remove from client info
+        if client_id in client_info:
+            client_name = client_info[client_id]['name']
+            del client_info[client_id]
+            logger.info(f"Client {client_name} ({client_id}) disconnected")
+        
+        # Update active speaker if this was the active speaker
+        if active_speaker_id == client_id:
+            active_speaker_id = None
+            logger.info(f"Active speaker {client_id} disconnected")
+        
+        logger.info(f"Cleaned up client: {client_id}")
+    except Exception as e:
+        logger.error(f"Error cleaning up client {client_id}: {e}")
 
 
 async def monitor_audio_track(track, client_id):
@@ -154,6 +238,10 @@ async def monitor_audio_track(track, client_id):
                     'timestamp': current_time
                 }
                 
+                # Check for mute (very low audio level)
+                if audio_level < 10:  # Very low threshold for mute detection
+                    logger.debug(f"Client {client_id} appears muted (level: {audio_level})")
+                
                 logger.debug(f"Audio level for {client_id}: {audio_level}")
                 
             except Exception as e:
@@ -164,9 +252,24 @@ async def monitor_audio_track(track, client_id):
         logger.error(f"Audio monitoring ended for {client_id}: {e}")
 
 
+def is_client_muted(client_id):
+    """Check if a client is muted (very low audio level)"""
+    if client_id not in audio_levels:
+        return True
+    
+    current_time = time.time()
+    audio_data = audio_levels[client_id]
+    
+    # Check if audio is recent and above mute threshold
+    if current_time - audio_data['timestamp'] > TIME_WINDOW:
+        return True
+    
+    return audio_data['level'] < 10  # Very low threshold for mute
+
+
 async def detect_active_speaker():
-    """Detect active speaker based on audio levels"""
-    global active_speaker_id
+    """Detect active speaker based on audio levels with stability logic"""
+    global active_speaker_id, last_speaker_change_time
     
     current_time = time.time()
     valid_speakers = {}
@@ -176,28 +279,54 @@ async def detect_active_speaker():
         if current_time - audio_data['timestamp'] <= TIME_WINDOW:
             valid_speakers[client_id] = audio_data['level']
     
-    if not valid_speakers:
-        if active_speaker_id:
-            active_speaker_id = None
-            logger.info("No active speakers detected")
-        return
+    logger.debug(f"Audio levels: {audio_levels}")
+    logger.debug(f"Valid speakers: {valid_speakers}")
     
     # Find speaker with highest audio level above threshold
     max_level = 0
     new_active_speaker = None
     
     for client_id, level in valid_speakers.items():
+        logger.debug(f"Client {client_id}: level={level}, threshold={AUDIO_THRESHOLD}")
         if level > AUDIO_THRESHOLD and level > max_level:
             max_level = level
             new_active_speaker = client_id
     
-    # Update active speaker if changed
+    # Stability logic: only switch if there's a clear new speaker and enough time has passed
     if new_active_speaker != active_speaker_id:
-        active_speaker_id = new_active_speaker
-        if active_speaker_id:
-            logger.info(f"Active speaker changed to: {active_speaker_id} (level: {max_level})")
+        time_since_last_change = current_time - last_speaker_change_time
+        
+        # If we have a current speaker and they're still talking, don't switch unless:
+        # 1. Current speaker is muted or silent
+        # 2. New speaker is significantly louder
+        # 3. Enough time has passed since last change
+        
+        should_switch = False
+        
+        if active_speaker_id is None:
+            # No current speaker, switch to any speaker above threshold
+            should_switch = True
+        elif is_client_muted(active_speaker_id) or (active_speaker_id in valid_speakers and valid_speakers[active_speaker_id] < 50):
+            # Current speaker is muted or silent, switch to new speaker
+            should_switch = True
+        elif new_active_speaker and max_level > valid_speakers.get(active_speaker_id, 0) * 1.5:
+            # New speaker is significantly louder (50% more), switch after delay
+            should_switch = time_since_last_change > speaker_stability_delay
+        elif time_since_last_change > speaker_stability_delay * 2:
+            # Long delay, allow switching to any new speaker
+            should_switch = True
+        
+        if should_switch:
+            old_speaker = active_speaker_id
+            active_speaker_id = new_active_speaker
+            last_speaker_change_time = current_time
+            
+            if active_speaker_id:
+                logger.info(f"Active speaker changed to: {active_speaker_id} (level: {max_level})")
+            else:
+                logger.info("No active speaker - all speakers silent")
         else:
-            logger.info("No speaker above threshold")
+            logger.debug(f"Speaker switch delayed - current: {active_speaker_id}, new: {new_active_speaker}, time: {time_since_last_change:.1f}s")
 
 
 async def offer_handler(request):
@@ -232,18 +361,31 @@ async def offer_handler(request):
         async def on_connectionstatechange():
             logger.info(f"Connection state for {client_id}: {pc.connectionState}")
             if pc.connectionState in ["failed", "closed"]:
-                await cleanup_client(client_id)
-                pcs.discard(pc)
+                try:
+                    await cleanup_client(client_id)
+                    pcs.discard(pc)
+                except Exception as e:
+                    logger.error(f"Error during cleanup: {e}")
         
         # Handle incoming tracks
         @pc.on("track")
         def on_track(track):
             logger.info(f"Track received from {client_id}: {track.kind}")
+            logger.info(f"Track readyState: {track.readyState}")
             
             if track.kind == "video":
                 # Store video track
                 video_tracks[client_id] = track
                 logger.info(f"Video track stored for {client_id}. Total video tracks: {len(video_tracks)}")
+                
+                # If this is the first video track, set it as active speaker for testing
+                if len(video_tracks) == 1:
+                    global active_speaker_id
+                    active_speaker_id = client_id
+                    logger.info(f"Set first video track as active speaker: {client_id}")
+                    # Also update the video transform track immediately
+                    if server_video_track:
+                        server_video_track.set_active_speaker(client_id)
                 
             elif track.kind == "audio":
                 logger.info(f"Audio track received from {client_id} - starting monitoring")
@@ -280,6 +422,8 @@ async def offer_handler(request):
         
     except Exception as e:
         logger.error(f"Error handling offer: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return web.Response(status=500, text="Internal Server Error")
 
 
@@ -369,6 +513,61 @@ async def viewer_handler(request):
         )
 
 
+async def video_websocket_handler(request):
+    """WebSocket handler for video streaming to viewers"""
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    
+    # Add to viewer websockets
+    viewer_websockets.add(ws)
+    logger.info(f"Viewer connected. Total viewers: {len(viewer_websockets)}")
+    
+    try:
+        async for msg in ws:
+            if msg.type == web.WSMsgType.TEXT:
+                data = json.loads(msg.data)
+                if data.get('type') == 'ping':
+                    await ws.send_str(json.dumps({'type': 'pong'}))
+            elif msg.type == web.WSMsgType.ERROR:
+                logger.error(f'WebSocket error: {ws.exception()}')
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    finally:
+        # Remove from viewer websockets
+        viewer_websockets.discard(ws)
+        logger.info(f"Viewer disconnected. Total viewers: {len(viewer_websockets)}")
+    
+    return ws
+
+
+async def video_feed_handler(request):
+    """Serve the server's video feed as a simple stream"""
+    try:
+        # For now, return a simple message indicating the video feed
+        # In a real implementation, this would stream the video
+        return web.Response(
+            content_type="text/html",
+            text="""
+            <html>
+            <head><title>Server Video Feed</title></head>
+            <body>
+                <h1>Server Video Feed</h1>
+                <p>This would show the active speaker's video.</p>
+                <p>Active Speaker: {active_speaker_id}</p>
+                <p>Video Tracks: {video_tracks_count}</p>
+                <p><a href="/viewer">Back to Viewer</a></p>
+            </body>
+            </html>
+            """.format(
+                active_speaker_id=active_speaker_id or "None",
+                video_tracks_count=len(video_tracks)
+            )
+        )
+    except Exception as e:
+        logger.error(f"Error in video feed handler: {e}")
+        return web.Response(status=500, text="Internal Server Error")
+
+
 async def friends_handler(request):
     """Serve the friends list page"""
     try:
@@ -421,6 +620,8 @@ def create_app():
     app.router.add_get('/debug', debug_handler)
     app.router.add_get('/viewer', viewer_handler)
     app.router.add_get('/friends', friends_handler)
+    app.router.add_get('/video-feed', video_feed_handler)
+    app.router.add_get('/video-ws', video_websocket_handler)
     app.router.add_get('/', index_handler)
     app.router.add_static('/', path='static', name='static')
     

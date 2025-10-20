@@ -45,7 +45,17 @@
             <div class="p-6">
                 <div class="relative max-w-4xl mx-auto mb-8">
                     <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
-                        <video id="serverVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                        <canvas id="videoCanvas" class="w-full h-full object-cover" style="display: none;"></canvas>
+                        <div id="videoPlaceholder" class="w-full h-full flex items-center justify-center text-white text-2xl">
+                            <div class="text-center">
+                                <div class="text-6xl mb-4">📹</div>
+                                <div>Server Video Feed</div>
+                                <div class="text-sm mt-2 opacity-75">Waiting for active speaker video...</div>
+                            </div>
+                        </div>
+                        <div id="videoStatus" class="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded text-sm">
+                            No active speaker
+                        </div>
                     </div>
                 </div>
 
@@ -240,6 +250,9 @@
                 // Update info panel
                 updateInfo(data);
                 
+                // Update video status
+                updateVideoStatus(data);
+                
                 // Update status
                 if (data.active_speaker) {
                     updateStatus(true, `Active Speaker: ${data.active_speaker}`);
@@ -296,12 +309,170 @@
         // Handle page unload
         window.addEventListener('beforeunload', () => {
             stopMonitoring();
+            if (ws) {
+                ws.close();
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Redraw current frame if available
+            if (videoImg.src) {
+                displayVideoFrame(videoImg.src.split(',')[1]);
+            }
         });
 
+        // Video display elements
+        const videoCanvas = document.getElementById('videoCanvas');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const videoStatusEl = document.getElementById('videoStatus');
+        const ctx = videoCanvas.getContext('2d');
+        
+        // WebSocket connection
+        let ws = null;
+        let videoImg = new Image();
+
+        // Simple video status update
+        function updateVideoStatus(data) {
+            if (data.active_speaker && data.video_tracks > 0) {
+                videoStatusEl.textContent = `Active Speaker: ${data.active_speaker}`;
+                videoStatusEl.style.backgroundColor = 'rgba(34, 197, 94, 0.8)';
+                
+                // Show canvas and hide placeholder
+                videoCanvas.style.display = 'block';
+                videoPlaceholder.style.display = 'none';
+                
+                // Draw a simple representation of the active speaker
+                drawActiveSpeaker(data.active_speaker, data.client_info[data.active_speaker]);
+            } else if (data.video_tracks > 0) {
+                videoStatusEl.textContent = `${data.video_tracks} clients connected - No active speaker`;
+                videoStatusEl.style.backgroundColor = 'rgba(251, 191, 36, 0.8)';
+                
+                // Show placeholder
+                videoCanvas.style.display = 'none';
+                videoPlaceholder.style.display = 'flex';
+            } else {
+                videoStatusEl.textContent = 'No clients connected';
+                videoStatusEl.style.backgroundColor = 'rgba(239, 68, 68, 0.8)';
+                
+                // Show placeholder
+                videoCanvas.style.display = 'none';
+                videoPlaceholder.style.display = 'flex';
+            }
+        }
+
+        // Draw active speaker representation
+        function drawActiveSpeaker(speakerId, speakerInfo) {
+            const canvas = videoCanvas;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            // Clear canvas
+            ctx.fillStyle = '#1f2937';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw speaker info
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(speakerInfo?.name || 'Unknown', canvas.width / 2, canvas.height / 2 - 20);
+            
+            ctx.font = '16px Arial';
+            ctx.fillText(`Channel ${speakerInfo?.channel || 'N/A'}`, canvas.width / 2, canvas.height / 2 + 10);
+            
+            ctx.font = '14px Arial';
+            ctx.fillText('Active Speaker', canvas.width / 2, canvas.height / 2 + 35);
+            
+            // Draw a simple video frame representation
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+        }
+
+        // Connect to WebSocket for video streaming
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/video-ws`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected for video streaming');
+                videoStatusEl.textContent = 'Connected - Receiving video stream';
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'video_frame') {
+                        displayVideoFrame(data.data);
+                    }
+                } catch (e) {
+                    console.error('Error parsing WebSocket message:', e);
+                }
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                videoStatusEl.textContent = 'Disconnected from video stream';
+                // Reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        }
+        
+        // Display video frame
+        function displayVideoFrame(frameData) {
+            videoImg.onload = () => {
+                // Get canvas container dimensions
+                const container = videoCanvas.parentElement;
+                const containerRect = container.getBoundingClientRect();
+                
+                // Calculate aspect ratio
+                const videoAspect = videoImg.width / videoImg.height;
+                const containerAspect = containerRect.width / containerRect.height;
+                
+                let drawWidth, drawHeight, offsetX, offsetY;
+                
+                if (videoAspect > containerAspect) {
+                    // Video is wider - fit to width
+                    drawWidth = containerRect.width;
+                    drawHeight = containerRect.width / videoAspect;
+                    offsetX = 0;
+                    offsetY = (containerRect.height - drawHeight) / 2;
+                } else {
+                    // Video is taller - fit to height
+                    drawHeight = containerRect.height;
+                    drawWidth = containerRect.height * videoAspect;
+                    offsetX = (containerRect.width - drawWidth) / 2;
+                    offsetY = 0;
+                }
+                
+                // Set canvas size to container size
+                videoCanvas.width = containerRect.width;
+                videoCanvas.height = containerRect.height;
+                
+                // Clear canvas
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, videoCanvas.width, videoCanvas.height);
+                
+                // Draw video frame centered and scaled
+                ctx.drawImage(videoImg, offsetX, offsetY, drawWidth, drawHeight);
+            };
+            videoImg.src = 'data:image/jpeg;base64,' + frameData;
+        }
+        
         // Initialize
         console.log('Server Video Viewer initialized');
         updateStatus(false, 'Initializing...');
         startMonitoring();
+        
+        // Connect to WebSocket
+        connectWebSocket();
     </script>
 </body>
 </html>

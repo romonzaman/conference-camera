@@ -16,6 +16,18 @@
             }
         }
     </script>
+    <style>
+        #localVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        
+        .video-container {
+            overflow: hidden;
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen p-4">
     <div class="max-w-7xl mx-auto">
@@ -49,8 +61,8 @@
                 <!-- Video Section (Left) - Hidden when disconnected -->
                 <div id="videoSection" class="lg:w-1/2 p-4 hidden">
                     <div class="relative">
-                        <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg relative">
-                            <video id="localVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                        <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg relative video-container">
+                            <video id="localVideo" class="w-full h-full" autoplay playsinline muted></video>
                             
                             <!-- Video Overlay with Name and Channel -->
                             <div id="videoOverlay" class="absolute top-4 left-4 right-4 bg-black/30 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
@@ -207,6 +219,12 @@
             videoSection.classList.remove('hidden');
             controlsSection.classList.remove('lg:w-1/2');
             controlsSection.classList.add('lg:w-1/2');
+            
+            // Debug video element
+            console.log('Video section shown');
+            console.log('Video element:', localVideoEl);
+            console.log('Video srcObject:', localVideoEl.srcObject);
+            console.log('Video readyState:', localVideoEl.readyState);
         }
 
         function hideVideoSection() {
@@ -440,9 +458,50 @@
                         autoGainControl: true
                     }
                 });
+                
+                console.log('Media stream obtained:', localStream);
+                console.log('Video tracks:', localStream.getVideoTracks());
+                console.log('Audio tracks:', localStream.getAudioTracks());
 
                 // Display local video
                 localVideoEl.srcObject = localStream;
+                console.log('Video stream set:', localStream);
+                console.log('Video element:', localVideoEl);
+                
+                // Ensure video plays
+                localVideoEl.play().catch(e => console.error('Video play error:', e));
+                
+                // Force video to play after a short delay
+                setTimeout(() => {
+                    if (localVideoEl.paused) {
+                        console.log('Video paused, attempting to play again');
+                        localVideoEl.play().catch(e => console.error('Retry video play error:', e));
+                    }
+                }, 1000);
+                
+                // Ensure proper video scaling
+                localVideoEl.onloadedmetadata = () => {
+                    console.log('Video metadata loaded, dimensions:', localVideoEl.videoWidth, 'x', localVideoEl.videoHeight);
+                    console.log('Video element dimensions:', localVideoEl.offsetWidth, 'x', localVideoEl.offsetHeight);
+                    
+                    // Simple scaling approach
+                    localVideoEl.style.objectFit = 'cover';
+                    localVideoEl.style.objectPosition = 'center';
+                };
+                
+                localVideoEl.oncanplay = () => {
+                    console.log('Video can play');
+                    console.log('Video currentTime:', localVideoEl.currentTime);
+                    console.log('Video duration:', localVideoEl.duration);
+                };
+                
+                localVideoEl.onplay = () => {
+                    console.log('Video started playing');
+                };
+                
+                localVideoEl.onerror = (e) => {
+                    console.error('Video error:', e);
+                };
 
                 // Setup audio monitoring
                 setupAudioMonitoring();
@@ -457,6 +516,7 @@
                 // Add local tracks and store audio track reference
                 localStream.getTracks().forEach(track => {
                     console.log(`Adding ${track.kind} track:`, track);
+                    console.log(`Track enabled: ${track.enabled}, track readyState: ${track.readyState}`);
                     pc.addTrack(track, localStream);
                     
                     // Store audio track for mute functionality
@@ -732,6 +792,46 @@
             if (document.hidden) {
                 // Save preferences when page becomes hidden
                 saveUserPreferences();
+            }
+        });
+
+        // Function to adjust video scaling
+        function adjustVideoScaling() {
+            if (!localVideoEl || !localVideoEl.srcObject || !localVideoEl.videoWidth) {
+                return;
+            }
+            
+            const container = localVideoEl.parentElement;
+            const containerWidth = container.offsetWidth;
+            const containerHeight = container.offsetHeight;
+            const videoWidth = localVideoEl.videoWidth;
+            const videoHeight = localVideoEl.videoHeight;
+            
+            const containerAspect = containerWidth / containerHeight;
+            const videoAspect = videoWidth / videoHeight;
+            
+            // Calculate scale to fill container while maintaining aspect ratio
+            let scale = 1.0;
+            if (videoAspect > containerAspect) {
+                // Video is wider - scale to fit height
+                scale = containerHeight / videoHeight;
+            } else {
+                // Video is taller - scale to fit width
+                scale = containerWidth / videoWidth;
+            }
+            
+            // Apply scaling with slight zoom to ensure full coverage
+            localVideoEl.style.transform = `scale(${scale * 1.05})`;
+            localVideoEl.style.objectFit = 'cover';
+            localVideoEl.style.objectPosition = 'center';
+            
+            console.log('Video scaling adjusted:', scale);
+        }
+
+        // Handle window resize to maintain video aspect ratio
+        window.addEventListener('resize', () => {
+            if (localVideoEl && localVideoEl.srcObject) {
+                adjustVideoScaling();
             }
         });
 
