@@ -20,7 +20,7 @@
         #localVideo {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             object-position: center;
         }
         
@@ -484,9 +484,10 @@
                     console.log('Video metadata loaded, dimensions:', localVideoEl.videoWidth, 'x', localVideoEl.videoHeight);
                     console.log('Video element dimensions:', localVideoEl.offsetWidth, 'x', localVideoEl.offsetHeight);
                     
-                    // Simple scaling approach
-                    localVideoEl.style.objectFit = 'cover';
+                    // Use contain to show full video without cropping
+                    localVideoEl.style.objectFit = 'contain';
                     localVideoEl.style.objectPosition = 'center';
+                    localVideoEl.style.transform = 'scale(1.0)';
                 };
                 
                 localVideoEl.oncanplay = () => {
@@ -801,37 +802,21 @@
                 return;
             }
             
-            const container = localVideoEl.parentElement;
-            const containerWidth = container.offsetWidth;
-            const containerHeight = container.offsetHeight;
-            const videoWidth = localVideoEl.videoWidth;
-            const videoHeight = localVideoEl.videoHeight;
-            
-            const containerAspect = containerWidth / containerHeight;
-            const videoAspect = videoWidth / videoHeight;
-            
-            // Calculate scale to fill container while maintaining aspect ratio
-            let scale = 1.0;
-            if (videoAspect > containerAspect) {
-                // Video is wider - scale to fit height
-                scale = containerHeight / videoHeight;
-            } else {
-                // Video is taller - scale to fit width
-                scale = containerWidth / videoWidth;
-            }
-            
-            // Apply scaling with slight zoom to ensure full coverage
-            localVideoEl.style.transform = `scale(${scale * 1.05})`;
-            localVideoEl.style.objectFit = 'cover';
+            // Use contain to show full video without cropping
+            localVideoEl.style.objectFit = 'contain';
             localVideoEl.style.objectPosition = 'center';
+            localVideoEl.style.transform = 'scale(1.0)';
             
-            console.log('Video scaling adjusted:', scale);
+            console.log('Video scaling set to contain');
         }
 
         // Handle window resize to maintain video aspect ratio
         window.addEventListener('resize', () => {
             if (localVideoEl && localVideoEl.srcObject) {
-                adjustVideoScaling();
+                // Simple approach - just ensure contain is used
+                localVideoEl.style.objectFit = 'contain';
+                localVideoEl.style.objectPosition = 'center';
+                localVideoEl.style.transform = 'scale(1.0)';
             }
         });
 
