@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎥 Server Video Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-slate-600 via-gray-700 to-slate-800 min-h-screen p-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">🎥 Server Video Viewer</h1>
+            <p class="text-white/80 text-lg">View the server's active speaker output</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Status Bar -->
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div id="statusIndicator" class="w-4 h-4 rounded-full bg-yellow-400 animate-pulse"></div>
+                        <span id="statusText" class="text-white font-medium">Loading...</span>
+                    </div>
+                    <div class="flex items-center space-x-4 text-white/80 text-sm">
+                        <span id="totalClients">0 clients</span>
+                        <span id="activeSpeaker">No active speaker</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Section -->
+            <div class="p-6">
+                <div class="relative max-w-4xl mx-auto mb-8">
+                    <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                        <video id="serverVideo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-blue-500 rounded-lg">
+                                <span class="text-2xl text-white">🎤</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-blue-600">Active Speaker</p>
+                                <p id="activeSpeaker" class="text-xl font-bold text-blue-900">None</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-green-500 rounded-lg">
+                                <span class="text-2xl text-white">👥</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-green-600">Connected Clients</p>
+                                <p id="connectedClients" class="text-xl font-bold text-green-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-purple-500 rounded-lg">
+                                <span class="text-2xl text-white">📹</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-purple-600">Video Tracks</p>
+                                <p id="videoTracks" class="text-xl font-bold text-purple-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
+                        <div class="flex items-center">
+                            <div class="p-2 bg-orange-500 rounded-lg">
+                                <span class="text-2xl text-white">🔊</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium text-orange-600">Audio Active</p>
+                                <p id="audioLevels" class="text-xl font-bold text-orange-900">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Client List -->
+                <div class="bg-gray-50 rounded-xl p-6 mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">Connected Clients</h3>
+                        <div class="flex items-center space-x-2">
+                            <button id="refreshBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
+                                <span>🔄</span>
+                                <span>Refresh</span>
+                            </button>
+                            <a href="/friends" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
+                                <span>👥</span>
+                                <span>Friends</span>
+                            </a>
+                            <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
+                                <span>🏠</span>
+                                <span>Home</span>
+                            </a>
+                        </div>
+                    </div>
+                    <div id="clientList" class="space-y-3 max-h-64 overflow-y-auto">
+                        <div class="text-gray-500 text-center py-8">No clients connected</div>
+                    </div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <span class="text-indigo-600 mr-2">ℹ️</span>
+                        How to use this viewer
+                    </h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-start space-x-2">
+                            <span class="text-indigo-500 font-bold">•</span>
+                            <span>This page shows the server's video output (active speaker)</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <span class="text-indigo-500 font-bold">•</span>
+                            <span>Open the main client page on mobile devices to connect</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <span class="text-indigo-500 font-bold">•</span>
+                            <span>Speak on connected devices to see video switching</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <span class="text-indigo-500 font-bold">•</span>
+                            <span>The video will automatically switch to whoever is speaking</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <span class="text-indigo-500 font-bold">•</span>
+                            <span>Gray screen means no active speaker or no clients connected</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let statusInterval = null;
+
+        // DOM elements
+        const statusEl = document.getElementById('status');
+        const statusTextEl = document.getElementById('statusText');
+        const serverVideoEl = document.getElementById('serverVideo');
+        const activeSpeakerEl = document.getElementById('activeSpeaker');
+        const connectedClientsEl = document.getElementById('connectedClients');
+        const videoTracksEl = document.getElementById('videoTracks');
+        const audioLevelsEl = document.getElementById('audioLevels');
+        const clientListEl = document.getElementById('clientList');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // Update status display
+        function updateStatus(hasSpeaker, text) {
+            statusTextEl.textContent = text;
+            
+            if (hasSpeaker) {
+                statusIndicator.className = 'w-4 h-4 rounded-full bg-green-400 animate-pulse';
+            } else {
+                statusIndicator.className = 'w-4 h-4 rounded-full bg-yellow-400 animate-pulse';
+            }
+        }
+
+        // Update info panel
+        function updateInfo(data) {
+            activeSpeakerEl.textContent = data.active_speaker || 'None';
+            connectedClientsEl.textContent = data.connected_clients || 0;
+            videoTracksEl.textContent = data.video_tracks || 0;
+            audioLevelsEl.textContent = Object.keys(data.audio_levels || {}).length;
+            
+            // Update client list
+            updateClientList(data.client_info || {}, data.active_speaker);
+        }
+
+        // Update client list
+        function updateClientList(clientInfo, activeSpeaker) {
+            const clients = Object.entries(clientInfo);
+            
+            if (clients.length === 0) {
+                clientListEl.innerHTML = '<div class="text-gray-500 text-center py-8">No clients connected</div>';
+                return;
+            }
+            
+            clientListEl.innerHTML = clients.map(([clientId, info]) => {
+                const isActiveSpeaker = clientId === activeSpeaker;
+                const isSpeaking = Object.keys(audioLevels || {}).includes(clientId);
+                
+                return `
+                    <div class="bg-white rounded-lg p-4 border-2 transition-all duration-200 hover:shadow-md ${isActiveSpeaker ? 'border-green-400 bg-green-50' : 'border-gray-200'}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                                    ${(info.name || 'U').charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-gray-800">${info.name || 'Unknown'}</div>
+                                    <div class="text-sm text-gray-600">Channel ${info.channel || 'N/A'} • ID: ${clientId.substring(0, 12)}...</div>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end space-y-1">
+                                ${isActiveSpeaker ? '<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">SPEAKING</span>' : ''}
+                                ${isSpeaking ? '<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">AUDIO</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Check server status
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                console.log('Server status:', data);
+                
+                // Update info panel
+                updateInfo(data);
+                
+                // Update status
+                if (data.active_speaker) {
+                    updateStatus(true, `Active Speaker: ${data.active_speaker}`);
+                } else if (data.connected_clients > 0) {
+                    updateStatus(false, `${data.connected_clients} clients connected - No active speaker`);
+                } else {
+                    updateStatus(false, 'No clients connected - Waiting for connections');
+                }
+                
+                // Show audio levels in console for debugging
+                if (data.audio_levels && Object.keys(data.audio_levels).length > 0) {
+                    console.log('Audio levels:', data.audio_levels);
+                }
+                
+            } catch (error) {
+                console.error('Error checking status:', error);
+                updateStatus(false, 'Error connecting to server');
+            }
+        }
+
+        // Start status monitoring
+        function startMonitoring() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+            
+            // Check immediately
+            checkStatus();
+            
+            // Then check every 2 seconds
+            statusInterval = setInterval(checkStatus, 2000);
+        }
+
+        // Stop status monitoring
+        function stopMonitoring() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
+        // Event listeners
+        refreshBtn.addEventListener('click', checkStatus);
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopMonitoring();
+            } else {
+                startMonitoring();
+            }
+        });
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            stopMonitoring();
+        });
+
+        // Initialize
+        console.log('Server Video Viewer initialized');
+        updateStatus(false, 'Initializing...');
+        startMonitoring();
+    </script>
+</body>
+</html>

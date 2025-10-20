@@ -1,0 +1,24 @@
+# WebRTC Conference System Dependencies
+# Python 3.9+ required
+
+# Web framework and async support
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+
+# WebRTC and media processing
+aiortc>=1.5.0
+av>=8.0.0
+
+# Computer vision and image processing
+opencv-python>=4.5.0
+
+# Numerical computing
+numpy>=1.21.0
+
+# Additional audio/video codecs (optional but recommended)
+# Uncomment if you need additional codec support:
+# av-python>=8.0.0
+
+# Development and testing (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.20.0

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>👥 Conference Friends</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 min-h-screen p-4">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">👥 Conference Friends</h1>
+            <p class="text-white/80 text-lg">Active participants in the conference</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Status Bar -->
+            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div id="statusIndicator" class="w-4 h-4 rounded-full bg-yellow-400 animate-pulse"></div>
+                        <span id="statusText" class="text-white font-medium">Loading...</span>
+                    </div>
+                    <div class="flex items-center space-x-4 text-white/80 text-sm">
+                        <span id="totalClients">0 clients</span>
+                        <span id="activeSpeaker">No active speaker</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-gray-50">
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <span class="text-2xl">👥</span>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-600">Total Clients</p>
+                            <p id="totalClientsCount" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-green-100 rounded-lg">
+                            <span class="text-2xl">🎤</span>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-600">Active Speaker</p>
+                            <p id="activeSpeakerName" class="text-lg font-bold text-gray-900">None</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-purple-100 rounded-lg">
+                            <span class="text-2xl">📹</span>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-600">Video Tracks</p>
+                            <p id="videoTracksCount" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-orange-100 rounded-lg">
+                            <span class="text-2xl">🔊</span>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-600">Audio Active</p>
+                            <p id="audioActiveCount" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friends List -->
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Active Participants</h2>
+                    <div class="flex items-center space-x-2">
+                        <button id="refreshBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
+                            <span>🔄</span>
+                            <span>Refresh</span>
+                        </button>
+                        <a href="/viewer" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
+                            <span>👁️</span>
+                            <span>Viewer</span>
+                        </a>
+                        <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
+                            <span>🏠</span>
+                            <span>Home</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Friends Grid -->
+                <div id="friendsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="text-center py-12 text-gray-500">
+                        <div class="text-6xl mb-4">👥</div>
+                        <p class="text-lg">No participants yet</p>
+                        <p class="text-sm">Waiting for clients to connect...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let statusInterval = null;
+
+        // DOM elements
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const totalClients = document.getElementById('totalClients');
+        const activeSpeaker = document.getElementById('activeSpeaker');
+        const totalClientsCount = document.getElementById('totalClientsCount');
+        const activeSpeakerName = document.getElementById('activeSpeakerName');
+        const videoTracksCount = document.getElementById('videoTracksCount');
+        const audioActiveCount = document.getElementById('audioActiveCount');
+        const friendsList = document.getElementById('friendsList');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // Update status display
+        function updateStatus(hasClients, text) {
+            statusText.textContent = text;
+            
+            if (hasClients) {
+                statusIndicator.className = 'w-4 h-4 rounded-full bg-green-400 animate-pulse';
+            } else {
+                statusIndicator.className = 'w-4 h-4 rounded-full bg-yellow-400 animate-pulse';
+            }
+        }
+
+        // Update stats
+        function updateStats(data) {
+            const clientCount = data.connected_clients || 0;
+            const activeSpeakerId = data.active_speaker;
+            const videoTracks = data.video_tracks || 0;
+            const audioLevels = data.audio_levels || {};
+            const clientInfo = data.client_info || {};
+
+            // Update counts
+            totalClientsCount.textContent = clientCount;
+            videoTracksCount.textContent = videoTracks;
+            audioActiveCount.textContent = Object.keys(audioLevels).length;
+
+            // Update active speaker
+            if (activeSpeakerId && clientInfo[activeSpeakerId]) {
+                const speakerInfo = clientInfo[activeSpeakerId];
+                activeSpeakerName.textContent = speakerInfo.name || 'Unknown';
+                activeSpeaker.textContent = `Speaking: ${speakerInfo.name || 'Unknown'}`;
+            } else {
+                activeSpeakerName.textContent = 'None';
+                activeSpeaker.textContent = 'No active speaker';
+            }
+
+            // Update status
+            if (clientCount > 0) {
+                updateStatus(true, `${clientCount} participants connected`);
+            } else {
+                updateStatus(false, 'Waiting for participants to connect...');
+            }
+        }
+
+        // Update friends list
+        function updateFriendsList(data) {
+            const clientInfo = data.client_info || {};
+            const activeSpeakerId = data.active_speaker;
+            const audioLevels = data.audio_levels || {};
+            const clients = Object.entries(clientInfo);
+
+            if (clients.length === 0) {
+                friendsList.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-gray-500">
+                        <div class="text-6xl mb-4">👥</div>
+                        <p class="text-lg">No participants yet</p>
+                        <p class="text-sm">Waiting for clients to connect...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            friendsList.innerHTML = clients.map(([clientId, info]) => {
+                const isActiveSpeaker = clientId === activeSpeakerId;
+                const hasAudio = clientId in audioLevels;
+                const audioLevel = audioLevels[clientId] || 0;
+
+                return `
+                    <div class="bg-white rounded-xl p-6 shadow-sm border-2 transition-all duration-200 hover:shadow-md ${isActiveSpeaker ? 'border-green-400 bg-green-50' : 'border-gray-200'}">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                    ${(info.name || 'U').charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-800 text-lg">${info.name || 'Unknown'}</h3>
+                                    <p class="text-sm text-gray-600">Channel ${info.channel || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end space-y-1">
+                                ${isActiveSpeaker ? '<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">SPEAKING</span>' : ''}
+                                ${hasAudio ? '<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">AUDIO</span>' : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-sm text-gray-600">
+                                <span>ID:</span>
+                                <span class="font-mono text-xs">${clientId.substring(0, 16)}...</span>
+                            </div>
+                            
+                            ${hasAudio ? `
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-sm text-gray-600">
+                                        <span>Audio Level:</span>
+                                        <span>${audioLevel}</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-gradient-to-r from-green-400 to-red-500 h-2 rounded-full transition-all duration-300" 
+                                             style="width: ${Math.min((audioLevel / 1000) * 100, 100)}%"></div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="flex justify-between text-sm text-gray-600">
+                                <span>Status:</span>
+                                <span class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 rounded-full ${isActiveSpeaker ? 'bg-green-400' : 'bg-gray-400'}"></div>
+                                    <span>${isActiveSpeaker ? 'Active' : 'Connected'}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Check server status
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                console.log('Server status:', data);
+                
+                // Update stats
+                updateStats(data);
+                
+                // Update friends list
+                updateFriendsList(data);
+                
+            } catch (error) {
+                console.error('Error checking status:', error);
+                updateStatus(false, 'Error connecting to server');
+            }
+        }
+
+        // Start status monitoring
+        function startMonitoring() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+            
+            // Check immediately
+            checkStatus();
+            
+            // Then check every 2 seconds
+            statusInterval = setInterval(checkStatus, 2000);
+        }
+
+        // Stop status monitoring
+        function stopMonitoring() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+
+        // Event listeners
+        refreshBtn.addEventListener('click', checkStatus);
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopMonitoring();
+            } else {
+                startMonitoring();
+            }
+        });
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            stopMonitoring();
+        });
+
+        // Initialize
+        console.log('Conference Friends initialized');
+        updateStatus(false, 'Initializing...');
+        startMonitoring();
+    </script>
+</body>
+</html>
