@@ -9,65 +9,65 @@
 <body>
     <div class="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
         <!-- Agreement Screen -->
-        <div id="proceedScreen" class="min-h-screen flex items-center justify-center p-6">
-            <div class="max-w-2xl w-full text-white">
-                <div class="text-center mb-8">
-                    <div class="text-8xl mb-6">📹</div>
-                    <h1 class="text-4xl font-bold mb-4">Conference Viewer</h1>
-                    <p class="text-xl opacity-80">Access live conference video and audio streams</p>
+        <div id="proceedScreen" class="min-h-screen flex items-center justify-center p-4">
+            <div class="max-w-4xl w-full text-white">
+                <div class="text-center mb-4">
+                    <div class="text-6xl mb-3">📹</div>
+                    <h1 class="text-3xl font-bold mb-2">Conference Viewer</h1>
+                    <p class="text-lg opacity-80">Access live conference video and audio streams</p>
                 </div>
-
+                
                 <!-- Agreement Content -->
-                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-8 mb-8 max-h-96 overflow-y-auto">
-                    <h2 class="text-2xl font-bold mb-6 text-center">Terms of Service & Privacy Agreement</h2>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-4 max-h-80 overflow-y-auto">
+                    <h2 class="text-xl font-bold mb-4 text-center">Terms of Service & Privacy Agreement</h2>
                     
-                    <div class="space-y-6 text-sm leading-relaxed">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed">
                         <div>
-                            <h3 class="text-lg font-semibold mb-3 text-blue-300">1. Service Access</h3>
+                            <h3 class="text-sm font-semibold mb-2 text-blue-300">1. Service Access</h3>
                             <p>By accessing this conference viewer, you agree to use this service responsibly and in accordance with applicable laws and regulations.</p>
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-semibold mb-3 text-blue-300">2. Privacy & Data Protection</h3>
-                            <p>This service processes video and audio streams in real-time. No recordings are stored on our servers. Your connection data (IP address, browser information) may be logged for security purposes only.</p>
+                            <h3 class="text-sm font-semibold mb-2 text-blue-300">2. Privacy & Data Protection</h3>
+                            <p>This service processes video and audio streams in real-time. No recordings are stored on our servers. Your connection data may be logged for security purposes only.</p>
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-semibold mb-3 text-blue-300">3. Security</h3>
-                            <p>All communications are encrypted using WebRTC protocols. You are responsible for maintaining the security of your device and network connection. Do not share access credentials or attempt to compromise the service.</p>
+                            <h3 class="text-sm font-semibold mb-2 text-blue-300">3. Security</h3>
+                            <p>All communications are encrypted using WebRTC protocols. You are responsible for maintaining the security of your device and network connection.</p>
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-semibold mb-3 text-blue-300">4. Acceptable Use</h3>
-                            <p>You agree not to use this service for any illegal, unauthorized, or inappropriate purposes. Respect the privacy and rights of other participants in the conference.</p>
+                            <h3 class="text-sm font-semibold mb-2 text-blue-300">4. Acceptable Use</h3>
+                            <p>You agree not to use this service for any illegal, unauthorized, or inappropriate purposes. Respect the privacy and rights of other participants.</p>
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-semibold mb-3 text-blue-300">5. Technical Requirements</h3>
-                            <p>This service requires a modern web browser with WebRTC support. Audio and video access may require user permission. Ensure your device meets the technical requirements for optimal performance.</p>
+                            <h3 class="text-sm font-semibold mb-2 text-blue-300">5. Technical Requirements</h3>
+                            <p>This service requires a modern web browser with WebRTC support. Audio and video access may require user permission.</p>
                         </div>
 
                         <div>
-                            <h3 class="text-lg font-semibold mb-3 text-blue-300">6. Limitation of Liability</h3>
-                            <p>This service is provided "as is" without warranties. We are not responsible for any technical issues, interruptions, or data loss that may occur during your use of the service.</p>
+                            <h3 class="text-sm font-semibold mb-2 text-blue-300">6. Limitation of Liability</h3>
+                            <p>This service is provided "as is" without warranties. We are not responsible for any technical issues, interruptions, or data loss.</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Agreement Actions -->
                 <div class="text-center">
-                    <div class="mb-6">
-                        <label class="flex items-center justify-center space-x-3 cursor-pointer">
-                            <input type="checkbox" id="agreeCheckbox" class="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                    <div class="mb-4">
+                        <label class="flex items-center justify-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="agreeCheckbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                             <span class="text-sm">I have read and agree to the Terms of Service and Privacy Policy</span>
                         </label>
                     </div>
                     
-                    <button id="proceedBtn" class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 px-12 rounded-lg text-xl transition-colors" disabled>
+                    <button id="proceedBtn" class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors" disabled>
                         Accept Agreement & Continue
                     </button>
                     
-                    <div class="text-xs text-white/60 mt-4">
+                    <div class="text-xs text-white/60 mt-2">
                         By clicking "Accept Agreement & Continue", you acknowledge that you have read, understood, and agree to be bound by these terms.
                     </div>
                 </div>
