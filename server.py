@@ -27,6 +27,7 @@ pcs: Set[RTCPeerConnection] = set()
 video_tracks: Dict[str, VideoStreamTrack] = {}
 audio_tracks: Dict[str, AudioStreamTrack] = {}  # Store audio tracks
 audio_levels: Dict[str, Dict] = {}
+muted_clients: Set[str] = set()  # Track muted clients
 active_speaker_id: Optional[str] = None
 server_video_track = None
 server_audio_track = None  # Audio track for viewers
@@ -68,7 +69,7 @@ class AudioTransformTrack(AudioStreamTrack):
         if speaker_id and speaker_id in audio_tracks:
             if self.current_track != audio_tracks[speaker_id]:
                 self.current_track = audio_tracks[speaker_id]
-                logger.info(f"Switched to speaker audio: {speaker_id}")
+                logger.debug(f"Switched to speaker audio: {speaker_id}")
         else:
             if self.current_track is not None:
                 self.current_track = None
@@ -136,15 +137,15 @@ class VideoTransformTrack(VideoStreamTrack):
     
     def set_active_speaker(self, speaker_id: str):
         """Switch to active speaker's video track"""
-        logger.info(f"Setting active speaker video: {speaker_id}")
-        logger.info(f"Available video tracks: {list(video_tracks.keys())}")
+        logger.debug(f"Setting active speaker video: {speaker_id}")
+        logger.debug(f"Available video tracks: {list(video_tracks.keys())}")
         
         if speaker_id and speaker_id in video_tracks:
             if self.current_track != video_tracks[speaker_id]:
                 self.current_track = video_tracks[speaker_id]
-                logger.info(f"Switched to speaker video: {speaker_id}")
+                logger.debug(f"Switched to speaker video: {speaker_id}")
             else:
-                logger.info(f"Already using speaker video: {speaker_id}")
+                logger.debug(f"Already using speaker video: {speaker_id}")
         else:
             if self.current_track is not None:
                 self.current_track = None
@@ -158,7 +159,7 @@ class VideoTransformTrack(VideoStreamTrack):
         if self.current_track:
             try:
                 frame = await self.current_track.recv()
-                logger.info(f"Received frame from active speaker: {frame.width}x{frame.height}")
+                logger.debug(f"Received frame from active speaker: {frame.width}x{frame.height}")
                 
                 # Broadcast frame to WebSocket viewers
                 await self.broadcast_frame_to_viewers(frame)
@@ -323,7 +324,7 @@ async def monitor_audio_track(track, client_id):
                 }
                 
                 # Only log audio levels occasionally to avoid spam
-                if audio_level % 50000 < 5000:  # Log roughly every 10th update
+                if audio_level % 100000 < 1000:  # Log roughly every 100th update
                     logger.info(f"Audio level for {client_id}: {audio_level}")
                 
                 # Check for mute (very low audio level)
@@ -411,12 +412,12 @@ async def detect_active_speaker():
             last_speaker_change_time = current_time
             
             if active_speaker_id:
-                logger.info(f"Active speaker changed to: {active_speaker_id} (level: {max_level})")
+                logger.debug(f"Active speaker changed to: {active_speaker_id} (level: {max_level})")
             else:
-                logger.info("No active speaker - all speakers silent")
+                logger.debug("No active speaker - all speakers silent")
         else:
             # Only log debug info occasionally to avoid spam
-            if int(current_time) % 5 == 0:  # Log every 5 seconds
+            if int(current_time) % 30 == 0:  # Log every 30 seconds
                 logger.debug(f"Speaker switch delayed - current: {active_speaker_id}, new: {new_active_speaker}, time: {time_since_last_change:.1f}s")
 
 
@@ -452,7 +453,7 @@ async def offer_handler(request):
         # Handle connection state changes
         @pc.on("connectionstatechange")
         async def on_connectionstatechange():
-            logger.info(f"Connection state for {client_id}: {pc.connectionState}")
+            logger.debug(f"Connection state for {client_id}: {pc.connectionState}")
             if pc.connectionState in ["failed", "closed"]:
                 try:
                     await cleanup_client(client_id)
@@ -476,7 +477,7 @@ async def offer_handler(request):
                 else:
                     # Store video track from regular client
                     video_tracks[client_id] = track
-                    logger.info(f"Video track stored for {client_id}. Total video tracks: {len(video_tracks)}")
+                    logger.debug(f"Video track stored for {client_id}. Total video tracks: {len(video_tracks)}")
                     
                     # If this is the first video track, set it as active speaker for testing
                     if len(video_tracks) == 1:
@@ -520,9 +521,9 @@ async def offer_handler(request):
             # Add the server's output tracks
             pc.addTrack(server_video_track)
             pc.addTrack(server_audio_track)
-            logger.info(f"Added server output tracks for viewer: {client_id}")
-            logger.info(f"Current video tracks available: {list(video_tracks.keys())}")
-            logger.info(f"Current audio tracks available: {list(audio_tracks.keys())}")
+            logger.debug(f"Added server output tracks for viewer: {client_id}")
+            logger.debug(f"Current video tracks available: {list(video_tracks.keys())}")
+            logger.debug(f"Current audio tracks available: {list(audio_tracks.keys())}")
         else:
             # For regular clients, they will send their own tracks
             logger.info(f"Regular client connection: {client_id}")
@@ -593,6 +594,7 @@ async def status_handler(request):
             },
             "audio_levels_raw": audio_levels,  # Include raw data for debugging
             "client_info": client_info,  # Include client information
+            "muted_clients": list(muted_clients),  # Include muted clients
             "timestamp": current_time
         }
         
@@ -629,6 +631,57 @@ async def debug_handler(request):
         
     except Exception as e:
         logger.error(f"Error in debug handler: {e}")
+        return web.Response(status=500, text="Internal Server Error")
+
+
+async def mute_handler(request):
+    """Toggle mute status for a client"""
+    try:
+        data = await request.json()
+        client_id = data.get('client_id')
+        
+        if not client_id:
+            return web.Response(status=400, text="client_id required")
+        
+        if client_id in muted_clients:
+            muted_clients.remove(client_id)
+            logger.info(f"Unmuted client: {client_id}")
+            return web.Response(text="Client unmuted")
+        else:
+            muted_clients.add(client_id)
+            logger.info(f"Muted client: {client_id}")
+            return web.Response(text="Client muted")
+            
+    except Exception as e:
+        logger.error(f"Error toggling mute: {e}")
+        return web.Response(status=500, text="Internal Server Error")
+
+
+async def kick_handler(request):
+    """Kick a client from the conference"""
+    try:
+        data = await request.json()
+        client_id = data.get('client_id')
+        
+        if not client_id:
+            return web.Response(status=400, text="client_id required")
+        
+        # Find and close the peer connection
+        pc_to_close = None
+        for pc in pcs:
+            if hasattr(pc, 'client_id') and pc.client_id == client_id:
+                pc_to_close = pc
+                break
+        
+        if pc_to_close:
+            await pc_to_close.close()
+            logger.info(f"Kicked client: {client_id}")
+            return web.Response(text="Client kicked")
+        else:
+            return web.Response(status=404, text="Client not found")
+            
+    except Exception as e:
+        logger.error(f"Error kicking client: {e}")
         return web.Response(status=500, text="Internal Server Error")
 
 
@@ -753,6 +806,8 @@ def create_app():
     app.router.add_get('/viewer', viewer_handler)
     app.router.add_get('/friends', friends_handler)
     app.router.add_get('/video-feed', video_feed_handler)
+    app.router.add_post('/mute', mute_handler)
+    app.router.add_post('/kick', kick_handler)
     app.router.add_get('/video-ws', video_websocket_handler)
     app.router.add_get('/', index_handler)
     app.router.add_static('/', path='static', name='static')
