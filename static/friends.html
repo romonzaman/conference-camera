@@ -206,18 +206,20 @@
                 const hasAudio = clientId in audioLevels;
                 const isMuted = mutedClients.includes(clientId);
                 const audioLevel = audioLevels[clientId] || 0;
+                const isViewer = clientId.startsWith('viewer_');
 
                 return `
                     <div class="bg-white rounded p-2 shadow-sm border transition-all duration-200 hover:shadow-md ${isActiveSpeaker ? 'border-green-400 bg-green-50' : 'border-gray-200'}">
                         <div class="flex items-center justify-between">
                             <!-- User Info -->
                             <div class="flex items-center space-x-2 flex-1 min-w-0">
-                                <div class="w-6 h-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                <div class="w-6 h-6 bg-gradient-to-r ${isViewer ? 'from-purple-500 to-pink-600' : 'from-indigo-500 to-purple-600'} rounded-full flex items-center justify-center text-white font-bold text-xs">
                                     ${(info.name || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center space-x-1">
                                         <h3 class="font-bold text-gray-800 truncate text-sm">${info.name || 'Unknown'}</h3>
+                                        ${isViewer ? '<span class="bg-purple-100 text-purple-800 text-xs font-bold px-1 py-0.5 rounded">VIEWER</span>' : ''}
                                         ${isActiveSpeaker ? '<span class="bg-green-100 text-green-800 text-xs font-bold px-1 py-0.5 rounded">SPEAKING</span>' : ''}
                                         ${hasAudio ? '<span class="bg-blue-100 text-blue-800 text-xs font-bold px-1 py-0.5 rounded">AUDIO</span>' : ''}
                                         ${isMuted ? '<span class="bg-red-100 text-red-800 text-xs font-bold px-1 py-0.5 rounded">MUTED</span>' : ''}
@@ -244,28 +246,30 @@
                                 </div>
                             ` : ''}
 
-                            <!-- Control Buttons -->
-                            <div class="flex items-center space-x-1">
-                                <button onclick="muteUser('${clientId}')" 
-                                        class="px-2 py-1 rounded transition-colors flex items-center space-x-1 ${isMuted ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-red-100 hover:bg-red-200 text-red-700'}"
-                                        title="${isMuted ? 'User is already muted' : 'Mute user'}"
-                                        ${isMuted ? 'disabled' : ''}>
-                                    <span class="text-xs">🔇</span>
-                                    <span class="text-xs font-medium">Mute</span>
-                                </button>
-                                <button onclick="unmuteUser('${clientId}')" 
-                                        class="px-2 py-1 rounded transition-colors flex items-center space-x-1 ${!isMuted ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-green-100 hover:bg-green-200 text-green-700'}"
-                                        title="${!isMuted ? 'User is not muted' : 'Unmute user'}"
-                                        ${!isMuted ? 'disabled' : ''}>
-                                    <span class="text-xs">🔊</span>
-                                    <span class="text-xs font-medium">Unmute</span>
-                                </button>
-                                <button onclick="kickUser('${clientId}')" 
-                                        class="p-1 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
-                                        title="Kick user">
-                                    <span class="text-xs">👢</span>
-                                </button>
-                            </div>
+                            <!-- Control Buttons (Only for non-viewers) -->
+                            ${!isViewer ? `
+                                <div class="flex items-center space-x-1">
+                                    <button onclick="muteUser('${clientId}')" 
+                                            class="px-2 py-1 rounded transition-colors flex items-center space-x-1 ${isMuted ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-red-100 hover:bg-red-200 text-red-700'}"
+                                            title="${isMuted ? 'User is already muted' : 'Mute user'}"
+                                            ${isMuted ? 'disabled' : ''}>
+                                        <span class="text-xs">🔇</span>
+                                        <span class="text-xs font-medium">Mute</span>
+                                    </button>
+                                    <button onclick="unmuteUser('${clientId}')" 
+                                            class="px-2 py-1 rounded transition-colors flex items-center space-x-1 ${!isMuted ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-green-100 hover:bg-green-200 text-green-700'}"
+                                            title="${!isMuted ? 'User is not muted' : 'Unmute user'}"
+                                            ${!isMuted ? 'disabled' : ''}>
+                                        <span class="text-xs">🔊</span>
+                                        <span class="text-xs font-medium">Unmute</span>
+                                    </button>
+                                    <button onclick="kickUser('${clientId}')" 
+                                            class="p-1 rounded bg-red-100 hover:bg-red-200 text-red-700 transition-colors"
+                                            title="Kick user">
+                                        <span class="text-xs">👢</span>
+                                    </button>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                 `;
