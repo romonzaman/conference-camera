@@ -2,41 +2,100 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🎥 Server Video Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conference Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    animation: {
-                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    }
-                }
-            }
-        }
-    </script>
 </head>
-<body class="bg-gradient-to-br from-slate-600 via-gray-700 to-slate-800 min-h-screen p-4">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">🎥 Server Video Viewer</h1>
-            <p class="text-white/80 text-lg">View the server's active speaker output</p>
+<body>
+    <div class="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
+        <!-- Agreement Screen -->
+        <div id="proceedScreen" class="min-h-screen flex items-center justify-center p-6">
+            <div class="max-w-2xl w-full text-white">
+                <div class="text-center mb-8">
+                    <div class="text-8xl mb-6">📹</div>
+                    <h1 class="text-4xl font-bold mb-4">Conference Viewer</h1>
+                    <p class="text-xl opacity-80">Access live conference video and audio streams</p>
+                </div>
+
+                <!-- Agreement Content -->
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-8 mb-8 max-h-96 overflow-y-auto">
+                    <h2 class="text-2xl font-bold mb-6 text-center">Terms of Service & Privacy Agreement</h2>
+                    
+                    <div class="space-y-6 text-sm leading-relaxed">
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-blue-300">1. Service Access</h3>
+                            <p>By accessing this conference viewer, you agree to use this service responsibly and in accordance with applicable laws and regulations.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-blue-300">2. Privacy & Data Protection</h3>
+                            <p>This service processes video and audio streams in real-time. No recordings are stored on our servers. Your connection data (IP address, browser information) may be logged for security purposes only.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-blue-300">3. Security</h3>
+                            <p>All communications are encrypted using WebRTC protocols. You are responsible for maintaining the security of your device and network connection. Do not share access credentials or attempt to compromise the service.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-blue-300">4. Acceptable Use</h3>
+                            <p>You agree not to use this service for any illegal, unauthorized, or inappropriate purposes. Respect the privacy and rights of other participants in the conference.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-blue-300">5. Technical Requirements</h3>
+                            <p>This service requires a modern web browser with WebRTC support. Audio and video access may require user permission. Ensure your device meets the technical requirements for optimal performance.</p>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold mb-3 text-blue-300">6. Limitation of Liability</h3>
+                            <p>This service is provided "as is" without warranties. We are not responsible for any technical issues, interruptions, or data loss that may occur during your use of the service.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agreement Actions -->
+                <div class="text-center">
+                    <div class="mb-6">
+                        <label class="flex items-center justify-center space-x-3 cursor-pointer">
+                            <input type="checkbox" id="agreeCheckbox" class="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-sm">I have read and agree to the Terms of Service and Privacy Policy</span>
+                        </label>
+                    </div>
+                    
+                    <button id="proceedBtn" class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 px-12 rounded-lg text-xl transition-colors" disabled>
+                        Accept Agreement & Continue
+                    </button>
+                    
+                    <div class="text-xs text-white/60 mt-4">
+                        By clicking "Accept Agreement & Continue", you acknowledge that you have read, understood, and agree to be bound by these terms.
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <!-- Status Bar -->
-            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div id="statusIndicator" class="w-4 h-4 rounded-full bg-yellow-400 animate-pulse"></div>
-                        <span id="statusText" class="text-white font-medium">Loading...</span>
-                    </div>
-                    <div class="flex items-center space-x-4 text-white/80 text-sm">
-                        <span id="totalClients">0 clients</span>
-                        <span id="activeSpeaker">No active speaker</span>
+        <!-- Main Viewer Content (Hidden Initially) -->
+        <div id="viewerContent" style="display: none;">
+            <!-- Header -->
+            <div class="bg-black/20 backdrop-blur-sm border-b border-white/10">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-16">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-xl">📹</span>
+                            </div>
+                            <h1 class="text-white text-xl font-bold">Conference Viewer</h1>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-4">
+                                <div id="statusIndicator" class="w-4 h-4 rounded-full bg-yellow-400 animate-pulse"></div>
+                                <span id="statusText" class="text-white font-medium">Loading...</span>
+                            </div>
+                            <div class="flex items-center space-x-4 text-white/80 text-sm">
+                                <span id="totalClients">0 clients</span>
+                                <span id="activeSpeaker">No active speaker</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -45,7 +104,7 @@
             <div class="p-6">
                 <div class="relative max-w-4xl mx-auto mb-8">
                     <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
-                        <canvas id="videoCanvas" class="w-full h-full object-cover" style="display: none;"></canvas>
+                        <video id="serverVideo" class="w-full h-full object-cover" autoplay playsinline></video>
                         <div id="videoPlaceholder" class="w-full h-full flex items-center justify-center text-white text-2xl">
                             <div class="text-center">
                                 <div class="text-6xl mb-4">📹</div>
@@ -53,135 +112,245 @@
                                 <div class="text-sm mt-2 opacity-75">Waiting for active speaker video...</div>
                             </div>
                         </div>
+                        <!-- Audio element for audio playback -->
+                        <audio id="serverAudio" autoplay playsinline></audio>
                     </div>
                 </div>
+            </div>
 
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-blue-500 rounded-lg">
-                                <span class="text-2xl text-white">🎤</span>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-blue-600">Active Speaker</p>
-                                <p id="activeSpeaker" class="text-xl font-bold text-blue-900">None</p>
-                            </div>
+            <!-- Stats Section -->
+            <div class="px-6 pb-6">
+                <div class="max-w-4xl mx-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
+                            <div class="text-2xl font-bold text-white" id="connectedClients">0</div>
+                            <div class="text-white/80 text-sm">Connected Clients</div>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
+                            <div class="text-2xl font-bold text-white" id="videoTracks">0</div>
+                            <div class="text-white/80 text-sm">Video Tracks</div>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
+                            <div class="text-2xl font-bold text-white" id="activeSpeakerName">None</div>
+                            <div class="text-white/80 text-sm">Active Speaker</div>
                         </div>
                     </div>
-
-                    <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-green-500 rounded-lg">
-                                <span class="text-2xl text-white">👥</span>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-green-600">Connected Clients</p>
-                                <p id="connectedClients" class="text-xl font-bold text-green-900">0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-purple-500 rounded-lg">
-                                <span class="text-2xl text-white">📹</span>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-purple-600">Video Tracks</p>
-                                <p id="videoTracks" class="text-xl font-bold text-purple-900">0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
-                        <div class="flex items-center">
-                            <div class="p-2 bg-orange-500 rounded-lg">
-                                <span class="text-2xl text-white">🔊</span>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium text-orange-600">Audio Active</p>
-                                <p id="audioLevels" class="text-xl font-bold text-orange-900">0</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Client List -->
-                <div class="bg-gray-50 rounded-xl p-6 mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-xl font-bold text-gray-800">Connected Clients</h3>
-                        <div class="flex items-center space-x-2">
-                            <button id="refreshBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
-                                <span>🔄</span>
-                                <span>Refresh</span>
-                            </button>
-                            <a href="/friends" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
-                                <span>👥</span>
-                                <span>Friends</span>
-                            </a>
-                            <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
-                                <span>🏠</span>
-                                <span>Home</span>
-                            </a>
-                        </div>
-                    </div>
-                    <div id="clientList" class="space-y-3 max-h-64 overflow-y-auto">
-                        <div class="text-gray-500 text-center py-8">No clients connected</div>
-                    </div>
-                </div>
-
-                <!-- Instructions -->
-                <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <span class="text-indigo-600 mr-2">ℹ️</span>
-                        How to use this viewer
-                    </h3>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li class="flex items-start space-x-2">
-                            <span class="text-indigo-500 font-bold">•</span>
-                            <span>This page shows the server's video output (active speaker)</span>
-                        </li>
-                        <li class="flex items-start space-x-2">
-                            <span class="text-indigo-500 font-bold">•</span>
-                            <span>Open the main client page on mobile devices to connect</span>
-                        </li>
-                        <li class="flex items-start space-x-2">
-                            <span class="text-indigo-500 font-bold">•</span>
-                            <span>Speak on connected devices to see video switching</span>
-                        </li>
-                        <li class="flex items-start space-x-2">
-                            <span class="text-indigo-500 font-bold">•</span>
-                            <span>The video will automatically switch to whoever is speaking</span>
-                        </li>
-                        <li class="flex items-start space-x-2">
-                            <span class="text-indigo-500 font-bold">•</span>
-                            <span>Gray screen means no active speaker or no clients connected</span>
-                        </li>
-                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Global variables
-        let statusInterval = null;
+        let pc = null;
+        let reconnectTimeout = null;
 
         // DOM elements
-        const statusEl = document.getElementById('status');
-        const statusTextEl = document.getElementById('statusText');
-        const serverVideoEl = document.getElementById('serverVideo');
+        const proceedScreen = document.getElementById('proceedScreen');
+        const viewerContent = document.getElementById('viewerContent');
+        const proceedBtn = document.getElementById('proceedBtn');
+        const agreeCheckbox = document.getElementById('agreeCheckbox');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const serverVideo = document.getElementById('serverVideo');
         const activeSpeakerEl = document.getElementById('activeSpeaker');
         const connectedClientsEl = document.getElementById('connectedClients');
         const videoTracksEl = document.getElementById('videoTracks');
-        const audioLevelsEl = document.getElementById('audioLevels');
-        const clientListEl = document.getElementById('clientList');
-        const refreshBtn = document.getElementById('refreshBtn');
+        const activeSpeakerNameEl = document.getElementById('activeSpeakerName');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const serverAudio = document.getElementById('serverAudio');
+        
+        // Debug audio element
+        console.log('Audio element found:', serverAudio);
+        if (!serverAudio) {
+            console.error('Audio element not found!');
+        }
+
+        // Checkbox change handler
+        agreeCheckbox.addEventListener('change', () => {
+            proceedBtn.disabled = !agreeCheckbox.checked;
+        });
+
+        // Proceed button click handler
+        proceedBtn.addEventListener('click', async () => {
+            if (!agreeCheckbox.checked) {
+                alert('Please read and accept the agreement to continue.');
+                return;
+            }
+            
+            // Hide proceed screen and show viewer content
+            proceedScreen.style.display = 'none';
+            viewerContent.style.display = 'block';
+            
+            // Connect to WebRTC
+            await connectWebRTC();
+        });
+
+        // Connect to WebRTC for video and audio
+        async function connectWebRTC() {
+            try {
+                console.log('Connecting to WebRTC for video and audio...');
+                
+                // Create peer connection
+                pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+
+                // Handle incoming tracks
+                pc.ontrack = (event) => {
+                    console.log('=== TRACK RECEIVED ===');
+                    console.log('Track kind:', event.track.kind);
+                    console.log('Track details:', event.track);
+                    console.log('Streams:', event.streams);
+                    console.log('Stream count:', event.streams.length);
+                    if (event.streams.length > 0) {
+                        console.log('First stream tracks:', event.streams[0].getTracks());
+                    }
+                    
+                    if (event.track.kind === 'video') {
+                        try {
+                            serverVideo.srcObject = event.streams[0];
+                            videoPlaceholder.style.display = 'none';
+                            serverVideo.style.display = 'block';
+                            console.log('Video stream set on viewer');
+                            console.log('Video element:', serverVideo);
+                            console.log('Video srcObject:', serverVideo.srcObject);
+                            console.log('Video track:', event.track);
+                            console.log('Video track enabled:', event.track.enabled);
+                            console.log('Video track muted:', event.track.muted);
+                            console.log('Video track readyState:', event.track.readyState);
+                            
+                            // Add event listeners to monitor video
+                            serverVideo.addEventListener('loadedmetadata', () => {
+                                console.log('Video metadata loaded');
+                                console.log('Video dimensions:', serverVideo.videoWidth, 'x', serverVideo.videoHeight);
+                            });
+                            
+                            serverVideo.addEventListener('canplay', () => {
+                                console.log('Video can play');
+                            });
+                            
+                            serverVideo.addEventListener('playing', () => {
+                                console.log('Video is playing');
+                            });
+                            
+                            serverVideo.addEventListener('error', (e) => {
+                                console.error('Video error:', e);
+                            });
+                            
+                            // Try to play the video
+                            serverVideo.play().then(() => {
+                                console.log('Video started playing');
+                            }).catch(err => {
+                                console.error('Error playing video:', err);
+                            });
+                        } catch (error) {
+                            console.error('Error setting video stream:', error);
+                        }
+                    } else if (event.track.kind === 'audio') {
+                        try {
+                            console.log('Processing audio track...');
+                            console.log('Audio track details:', event.track);
+                            console.log('Audio streams:', event.streams);
+                            
+                            serverAudio.srcObject = event.streams[0];
+                            console.log('Audio stream set on viewer');
+                            console.log('Audio element:', serverAudio);
+                            console.log('Audio srcObject:', serverAudio.srcObject);
+                            console.log('Audio element src:', serverAudio.src);
+                            
+                            // Add event listeners for audio
+                            serverAudio.addEventListener('loadedmetadata', () => {
+                                console.log('Audio metadata loaded');
+                            });
+                            
+                            serverAudio.addEventListener('canplay', () => {
+                                console.log('Audio can play');
+                            });
+                            
+                            serverAudio.addEventListener('playing', () => {
+                                console.log('Audio is playing');
+                            });
+                            
+                            serverAudio.addEventListener('error', (e) => {
+                                console.error('Audio error:', e);
+                            });
+                            
+                            // Try to play the audio
+                            serverAudio.play().then(() => {
+                                console.log('Audio started playing successfully');
+                            }).catch(err => {
+                                console.error('Error playing audio:', err);
+                                console.log('Audio element state:', {
+                                    paused: serverAudio.paused,
+                                    muted: serverAudio.muted,
+                                    volume: serverAudio.volume,
+                                    readyState: serverAudio.readyState
+                                });
+                            });
+                        } catch (error) {
+                            console.error('Error setting audio stream:', error);
+                        }
+                    }
+                };
+
+                // Handle connection state changes
+                pc.onconnectionstatechange = () => {
+                    console.log('WebRTC connection state:', pc.connectionState);
+                    if (pc.connectionState === 'connected') {
+                        console.log('WebRTC connected successfully');
+                        updateStatus(true, 'Connected');
+                    } else if (pc.connectionState === 'failed') {
+                        console.log('WebRTC connection failed');
+                        updateStatus(false, 'Connection failed');
+                        // Retry connection
+                        setTimeout(connectWebRTC, 3000);
+                    }
+                };
+
+                // Create offer to receive server's video and audio
+                // Add transceivers to indicate we want to receive tracks
+                pc.addTransceiver('video', { direction: 'recvonly' });
+                pc.addTransceiver('audio', { direction: 'recvonly' });
+                
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                
+                // Send offer to server
+                const response = await fetch('/offer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sdp: offer.sdp,
+                        type: offer.type,
+                        clientId: 'viewer_' + Date.now(),
+                        userName: 'Viewer',
+                        channel: 0
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const answer = await response.json();
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                
+                console.log('WebRTC connected successfully');
+                updateStatus(true, 'Connected');
+                
+            } catch (error) {
+                console.error('Error connecting to server:', error);
+                updateStatus(false, 'Connection failed');
+                // Retry connection
+                setTimeout(connectWebRTC, 3000);
+            }
+        }
 
         // Update status display
         function updateStatus(hasSpeaker, text) {
-            statusTextEl.textContent = text;
+            statusText.textContent = text;
             
             if (hasSpeaker) {
                 statusIndicator.className = 'w-4 h-4 rounded-full bg-green-400 animate-pulse';
@@ -190,50 +359,28 @@
             }
         }
 
-        // Update info panel
-        function updateInfo(data) {
-            activeSpeakerEl.textContent = data.active_speaker || 'None';
-            connectedClientsEl.textContent = data.connected_clients || 0;
-            videoTracksEl.textContent = data.video_tracks || 0;
-            audioLevelsEl.textContent = Object.keys(data.audio_levels || {}).length;
+        // Update video status
+        function updateVideoStatus(data) {
+            console.log('Updating video status:', data);
+            console.log('Current video display:', serverVideo.style.display);
+            console.log('Current placeholder display:', videoPlaceholder.style.display);
             
-            // Update client list
-            updateClientList(data.client_info || {}, data.active_speaker);
-        }
-
-        // Update client list
-        function updateClientList(clientInfo, activeSpeaker) {
-            const clients = Object.entries(clientInfo);
-            
-            if (clients.length === 0) {
-                clientListEl.innerHTML = '<div class="text-gray-500 text-center py-8">No clients connected</div>';
-                return;
+            if (data.active_speaker && data.video_tracks > 0) {
+                // Show video and hide placeholder
+                serverVideo.style.display = 'block';
+                videoPlaceholder.style.display = 'none';
+                console.log('Showing video for active speaker');
+            } else if (data.video_tracks > 0) {
+                // Show placeholder
+                serverVideo.style.display = 'none';
+                videoPlaceholder.style.display = 'flex';
+                console.log('Showing placeholder - no active speaker');
+            } else {
+                // Show placeholder
+                serverVideo.style.display = 'none';
+                videoPlaceholder.style.display = 'flex';
+                console.log('Showing placeholder - no video tracks');
             }
-            
-            clientListEl.innerHTML = clients.map(([clientId, info]) => {
-                const isActiveSpeaker = clientId === activeSpeaker;
-                const isSpeaking = Object.keys(audioLevels || {}).includes(clientId);
-                
-                return `
-                    <div class="bg-white rounded-lg p-4 border-2 transition-all duration-200 hover:shadow-md ${isActiveSpeaker ? 'border-green-400 bg-green-50' : 'border-gray-200'}">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                                    ${(info.name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <div class="font-bold text-gray-800">${info.name || 'Unknown'}</div>
-                                    <div class="text-sm text-gray-600">Channel ${info.channel || 'N/A'} • ID: ${clientId.substring(0, 12)}...</div>
-                                </div>
-                            </div>
-                            <div class="flex flex-col items-end space-y-1">
-                                ${isActiveSpeaker ? '<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full">SPEAKING</span>' : ''}
-                                ${isSpeaking ? '<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">AUDIO</span>' : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
         }
 
         // Check server status
@@ -244,189 +391,42 @@
                 
                 console.log('Server status:', data);
                 
-                // Update info panel
-                updateInfo(data);
+                // Update UI
+                connectedClientsEl.textContent = data.connected_clients || 0;
+                videoTracksEl.textContent = data.video_tracks || 0;
+                activeSpeakerEl.textContent = data.active_speaker || 'No active speaker';
+                activeSpeakerNameEl.textContent = data.active_speaker || 'None';
                 
                 // Update video status
                 updateVideoStatus(data);
                 
-                // Update status
-                if (data.active_speaker) {
-                    updateStatus(true, `Active Speaker: ${data.active_speaker}`);
-                } else if (data.connected_clients > 0) {
-                    updateStatus(false, `${data.connected_clients} clients connected - No active speaker`);
-                } else {
-                    updateStatus(false, 'No clients connected - Waiting for connections');
-                }
-                
-                // Show audio levels in console for debugging
-                if (data.audio_levels && Object.keys(data.audio_levels).length > 0) {
-                    console.log('Audio levels:', data.audio_levels);
-                }
-                
             } catch (error) {
                 console.error('Error checking status:', error);
-                updateStatus(false, 'Error connecting to server');
             }
         }
 
-        // Start status monitoring
+        // Start monitoring
         function startMonitoring() {
-            if (statusInterval) {
-                clearInterval(statusInterval);
-            }
-            
-            // Check immediately
             checkStatus();
-            
-            // Then check every 2 seconds
-            statusInterval = setInterval(checkStatus, 2000);
+            setInterval(checkStatus, 2000);
         }
 
-        // Stop status monitoring
-        function stopMonitoring() {
-            if (statusInterval) {
-                clearInterval(statusInterval);
-                statusInterval = null;
-            }
-        }
-
-        // Event listeners
-        refreshBtn.addEventListener('click', checkStatus);
-
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                stopMonitoring();
-            } else {
-                startMonitoring();
-            }
-        });
-
-        // Handle page unload
-        window.addEventListener('beforeunload', () => {
-            stopMonitoring();
-            if (ws) {
-                ws.close();
-            }
-        });
-        
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            // Redraw current frame if available
-            if (videoImg.src) {
-                displayVideoFrame(videoImg.src.split(',')[1]);
-            }
-        });
-
-        // Video display elements
-        const videoCanvas = document.getElementById('videoCanvas');
-        const videoPlaceholder = document.getElementById('videoPlaceholder');
-        const ctx = videoCanvas.getContext('2d');
-        
-        // WebSocket connection
-        let ws = null;
-        let videoImg = new Image();
-
-        // Simple video status update
-        function updateVideoStatus(data) {
-            if (data.active_speaker && data.video_tracks > 0) {
-                // Show canvas and hide placeholder
-                videoCanvas.style.display = 'block';
-                videoPlaceholder.style.display = 'none';
-            } else if (data.video_tracks > 0) {
-                // Show placeholder
-                videoCanvas.style.display = 'none';
-                videoPlaceholder.style.display = 'flex';
-            } else {
-                // Show placeholder
-                videoCanvas.style.display = 'none';
-                videoPlaceholder.style.display = 'flex';
-            }
-        }
-
-
-        // Connect to WebSocket for video streaming
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/video-ws`;
-            
-            ws = new WebSocket(wsUrl);
-            
-            ws.onopen = () => {
-                console.log('WebSocket connected for video streaming');
-            };
-            
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'video_frame') {
-                        displayVideoFrame(data.data);
-                    }
-                } catch (e) {
-                    console.error('Error parsing WebSocket message:', e);
-                }
-            };
-            
-            ws.onclose = () => {
-                console.log('WebSocket disconnected');
-                // Reconnect after 3 seconds
-                setTimeout(connectWebSocket, 3000);
-            };
-            
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
+        // Test audio element
+        function testAudio() {
+            console.log('Testing audio element...');
+            console.log('Audio element:', serverAudio);
+            console.log('Audio srcObject:', serverAudio.srcObject);
+            console.log('Audio paused:', serverAudio.paused);
+            console.log('Audio muted:', serverAudio.muted);
+            console.log('Audio volume:', serverAudio.volume);
+            console.log('Audio readyState:', serverAudio.readyState);
         }
         
-        // Display video frame
-        function displayVideoFrame(frameData) {
-            videoImg.onload = () => {
-                // Get canvas container dimensions
-                const container = videoCanvas.parentElement;
-                const containerRect = container.getBoundingClientRect();
-                
-                // Calculate aspect ratio
-                const videoAspect = videoImg.width / videoImg.height;
-                const containerAspect = containerRect.width / containerRect.height;
-                
-                let drawWidth, drawHeight, offsetX, offsetY;
-                
-                if (videoAspect > containerAspect) {
-                    // Video is wider - fit to width
-                    drawWidth = containerRect.width;
-                    drawHeight = containerRect.width / videoAspect;
-                    offsetX = 0;
-                    offsetY = (containerRect.height - drawHeight) / 2;
-                } else {
-                    // Video is taller - fit to height
-                    drawHeight = containerRect.height;
-                    drawWidth = containerRect.height * videoAspect;
-                    offsetX = (containerRect.width - drawWidth) / 2;
-                    offsetY = 0;
-                }
-                
-                // Set canvas size to container size
-                videoCanvas.width = containerRect.width;
-                videoCanvas.height = containerRect.height;
-                
-                // Clear canvas
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(0, 0, videoCanvas.width, videoCanvas.height);
-                
-                // Draw video frame centered and scaled
-                ctx.drawImage(videoImg, offsetX, offsetY, drawWidth, drawHeight);
-            };
-            videoImg.src = 'data:image/jpeg;base64,' + frameData;
-        }
-        
-        // Initialize
-        console.log('Server Video Viewer initialized');
-        updateStatus(false, 'Initializing...');
+        // Start monitoring when page loads
         startMonitoring();
         
-        // Connect to WebSocket
-        connectWebSocket();
+        // Test audio every 5 seconds
+        setInterval(testAudio, 5000);
     </script>
 </body>
 </html>

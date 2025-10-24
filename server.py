@@ -25,9 +25,11 @@ logger = logging.getLogger(__name__)
 # Global state management
 pcs: Set[RTCPeerConnection] = set()
 video_tracks: Dict[str, VideoStreamTrack] = {}
+audio_tracks: Dict[str, AudioStreamTrack] = {}  # Store audio tracks
 audio_levels: Dict[str, Dict] = {}
 active_speaker_id: Optional[str] = None
 server_video_track = None
+server_audio_track = None  # Audio track for viewers
 client_info: Dict[str, Dict] = {}  # Store client name and channel info
 viewer_websockets: Set[web.WebSocketResponse] = set()  # WebSocket connections for viewers
 
@@ -35,8 +37,12 @@ viewer_websockets: Set[web.WebSocketResponse] = set()  # WebSocket connections f
 last_speaker_change_time = 0
 speaker_stability_delay = 2.0  # Wait 2 seconds before switching speakers
 
+# Video streaming optimization
+last_frame_time = 0
+frame_interval = 1.0 / 15  # Limit to 15 FPS for viewers
+
 # Configuration
-AUDIO_THRESHOLD = 500
+AUDIO_THRESHOLD = 1  # Very low threshold to work with low audio levels
 TIME_WINDOW = 1.0  # seconds
 VIDEO_WIDTH = 640
 VIDEO_HEIGHT = 480
@@ -45,6 +51,57 @@ VIDEO_HEIGHT = 480
 RTC_CONFIGURATION = RTCConfiguration(
     iceServers=[RTCIceServer(urls="stun:stun.l.google.com:19302")]
 )
+
+
+class AudioTransformTrack(AudioStreamTrack):
+    """
+    Audio track that switches between different client audio streams
+    based on active speaker detection
+    """
+    
+    def __init__(self):
+        super().__init__()
+        self.current_track = None
+    
+    def set_active_speaker(self, speaker_id: str):
+        """Switch to active speaker's audio track"""
+        if speaker_id and speaker_id in audio_tracks:
+            if self.current_track != audio_tracks[speaker_id]:
+                self.current_track = audio_tracks[speaker_id]
+                logger.info(f"Switched to speaker audio: {speaker_id}")
+        else:
+            if self.current_track is not None:
+                self.current_track = None
+                if speaker_id:
+                    logger.info(f"Speaker {speaker_id} not found in audio tracks")
+                else:
+                    logger.info("No active speaker audio")
+    
+    async def recv(self):
+        """Receive next audio frame"""
+        if self.current_track:
+            try:
+                frame = await self.current_track.recv()
+                return frame
+            except Exception as e:
+                logger.error(f"Error receiving audio frame from active speaker: {e}")
+                self.current_track = None
+        
+        # Return silence if no active speaker - create a silent frame
+        # This prevents the Opus encoder from receiving None frames
+        import av
+        import numpy as np
+        
+        # Create a silent audio frame (48kHz, 20ms, mono)
+        samples = 960  # 48kHz * 20ms = 960 samples
+        silent_data = np.zeros((1, samples), dtype=np.int16)  # 2D array: (channels, samples)
+        
+        # Create audio frame
+        frame = av.AudioFrame.from_ndarray(silent_data, format='s16', layout='mono')
+        frame.sample_rate = 48000
+        frame.pts = None  # Let av handle timestamping
+        
+        return frame
 
 
 class VideoTransformTrack(VideoStreamTrack):
@@ -79,25 +136,29 @@ class VideoTransformTrack(VideoStreamTrack):
     
     def set_active_speaker(self, speaker_id: str):
         """Switch to active speaker's video track"""
-        logger.info(f"Setting active speaker: {speaker_id}")
+        logger.info(f"Setting active speaker video: {speaker_id}")
         logger.info(f"Available video tracks: {list(video_tracks.keys())}")
         
         if speaker_id and speaker_id in video_tracks:
-            self.current_track = video_tracks[speaker_id]
-            logger.info(f"Switched to speaker: {speaker_id}")
-        else:
-            self.current_track = None
-            if speaker_id:
-                logger.info(f"Speaker {speaker_id} not found in video tracks")
+            if self.current_track != video_tracks[speaker_id]:
+                self.current_track = video_tracks[speaker_id]
+                logger.info(f"Switched to speaker video: {speaker_id}")
             else:
-                logger.info("No active speaker, showing blank frame")
+                logger.info(f"Already using speaker video: {speaker_id}")
+        else:
+            if self.current_track is not None:
+                self.current_track = None
+                if speaker_id:
+                    logger.info(f"Speaker {speaker_id} not found in video tracks")
+                else:
+                    logger.info("No active speaker, showing blank frame")
     
     async def recv(self):
         """Receive next video frame"""
         if self.current_track:
             try:
                 frame = await self.current_track.recv()
-                logger.debug(f"Received frame from active speaker")
+                logger.info(f"Received frame from active speaker: {frame.width}x{frame.height}")
                 
                 # Broadcast frame to WebSocket viewers
                 await self.broadcast_frame_to_viewers(frame)
@@ -141,21 +202,40 @@ class VideoTransformTrack(VideoStreamTrack):
                 return av.VideoFrame.from_ndarray(frame, format="rgb24")
     
     async def broadcast_frame_to_viewers(self, frame):
-        """Broadcast video frame to WebSocket viewers"""
+        """Broadcast video frame to WebSocket viewers with optimization"""
+        global last_frame_time
+        
         if not viewer_websockets:
             return
         
+        # Frame rate limiting
+        current_time = time.time()
+        if current_time - last_frame_time < frame_interval:
+            return
+        
+        last_frame_time = current_time
+        
         try:
-            # Convert frame to JPEG
+            # Convert frame to numpy array
             frame_array = frame.to_ndarray(format="bgr24")
-            _, buffer = cv2.imencode('.jpg', frame_array, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            
+            # Resize frame to reduce bandwidth (half size)
+            height, width = frame_array.shape[:2]
+            small_frame = cv2.resize(frame_array, (width//2, height//2))
+            
+            # Convert to JPEG with lower quality for faster transmission
+            _, buffer = cv2.imencode('.jpg', small_frame, [
+                cv2.IMWRITE_JPEG_QUALITY, 50,  # Lower quality for less lag
+                cv2.IMWRITE_JPEG_OPTIMIZE, 1
+            ])
+            
             frame_data = base64.b64encode(buffer).decode('utf-8')
             
             # Send to all connected viewers
             message = json.dumps({
                 'type': 'video_frame',
                 'data': frame_data,
-                'timestamp': time.time()
+                'timestamp': current_time
             })
             
             # Send to all viewers concurrently
@@ -194,6 +274,10 @@ async def cleanup_client(client_id: str):
         if client_id in video_tracks:
             del video_tracks[client_id]
         
+        # Remove from audio tracks
+        if client_id in audio_tracks:
+            del audio_tracks[client_id]
+        
         # Remove from audio levels
         if client_id in audio_levels:
             del audio_levels[client_id]
@@ -229,7 +313,7 @@ async def monitor_audio_track(track, client_id):
                     audio_data = audio_data.mean(axis=1)  # Convert to mono
                 
                 rms = np.sqrt(np.mean(audio_data**2))
-                audio_level = int(rms * 1000)  # Scale for better visibility
+                audio_level = int(rms * 10000)  # Increased scale for better visibility
                 
                 # Update audio levels with timestamp
                 current_time = time.time()
@@ -237,6 +321,10 @@ async def monitor_audio_track(track, client_id):
                     'level': audio_level,
                     'timestamp': current_time
                 }
+                
+                # Only log audio levels occasionally to avoid spam
+                if audio_level % 50000 < 5000:  # Log roughly every 10th update
+                    logger.info(f"Audio level for {client_id}: {audio_level}")
                 
                 # Check for mute (very low audio level)
                 if audio_level < 10:  # Very low threshold for mute detection
@@ -291,6 +379,7 @@ async def detect_active_speaker():
         if level > AUDIO_THRESHOLD and level > max_level:
             max_level = level
             new_active_speaker = client_id
+            new_active_speaker = client_id
     
     # Stability logic: only switch if there's a clear new speaker and enough time has passed
     if new_active_speaker != active_speaker_id:
@@ -326,7 +415,9 @@ async def detect_active_speaker():
             else:
                 logger.info("No active speaker - all speakers silent")
         else:
-            logger.debug(f"Speaker switch delayed - current: {active_speaker_id}, new: {new_active_speaker}, time: {time_since_last_change:.1f}s")
+            # Only log debug info occasionally to avoid spam
+            if int(current_time) % 5 == 0:  # Log every 5 seconds
+                logger.debug(f"Speaker switch delayed - current: {active_speaker_id}, new: {new_active_speaker}, time: {time_since_last_change:.1f}s")
 
 
 async def offer_handler(request):
@@ -351,10 +442,12 @@ async def offer_handler(request):
         pc = RTCPeerConnection(RTC_CONFIGURATION)
         pcs.add(pc)
         
-        # Create or get global video transform track
-        global server_video_track
+        # Create or get global video and audio transform tracks
+        global server_video_track, server_audio_track
         if server_video_track is None:
             server_video_track = VideoTransformTrack()
+        if server_audio_track is None:
+            server_audio_track = AudioTransformTrack()
         
         # Handle connection state changes
         @pc.on("connectionstatechange")
@@ -373,34 +466,66 @@ async def offer_handler(request):
             logger.info(f"Track received from {client_id}: {track.kind}")
             logger.info(f"Track readyState: {track.readyState}")
             
+            # Check if this is a viewer connection (not a regular client)
+            is_viewer = client_id.startswith('viewer_')
+            
             if track.kind == "video":
-                # Store video track
-                video_tracks[client_id] = track
-                logger.info(f"Video track stored for {client_id}. Total video tracks: {len(video_tracks)}")
-                
-                # If this is the first video track, set it as active speaker for testing
-                if len(video_tracks) == 1:
-                    global active_speaker_id
-                    active_speaker_id = client_id
-                    logger.info(f"Set first video track as active speaker: {client_id}")
-                    # Also update the video transform track immediately
-                    if server_video_track:
-                        server_video_track.set_active_speaker(client_id)
+                if is_viewer:
+                    # This is a viewer - they don't send video, they receive it
+                    logger.info(f"Viewer {client_id} connected - will receive video stream")
+                else:
+                    # Store video track from regular client
+                    video_tracks[client_id] = track
+                    logger.info(f"Video track stored for {client_id}. Total video tracks: {len(video_tracks)}")
+                    
+                    # If this is the first video track, set it as active speaker for testing
+                    if len(video_tracks) == 1:
+                        global active_speaker_id
+                        active_speaker_id = client_id
+                        logger.info(f"Set first video track as active speaker: {client_id}")
+                        # Also update the video transform track immediately
+                        if server_video_track:
+                            server_video_track.set_active_speaker(client_id)
                 
             elif track.kind == "audio":
-                logger.info(f"Audio track received from {client_id} - starting monitoring")
-                
-                # Connect the incoming audio track to our monitoring track
-                @track.on("ended")
-                def on_ended():
-                    logger.info(f"Audio track ended for {client_id}")
-                
-                # Start monitoring the audio track
-                asyncio.create_task(monitor_audio_track(track, client_id))
-                logger.info(f"Audio monitoring started for {client_id}")
+                if is_viewer:
+                    # This is a viewer - they don't send audio, they receive it
+                    logger.info(f"Viewer {client_id} connected - will receive audio stream")
+                else:
+                    # Store audio track from regular client
+                    audio_tracks[client_id] = track
+                    logger.info(f"Audio track stored for {client_id}. Total audio tracks: {len(audio_tracks)}")
+                    
+                    # Connect the incoming audio track to our monitoring track
+                    @track.on("ended")
+                    def on_ended():
+                        logger.info(f"Audio track ended for {client_id}")
+                    
+                    # Start monitoring the audio track
+                    asyncio.create_task(monitor_audio_track(track, client_id))
+                    logger.info(f"Audio monitoring started for {client_id}")
         
-        # Add video transform track to peer connection
-        pc.addTrack(server_video_track)
+        # Check if this is a viewer connection
+        is_viewer = client_id.startswith('viewer_')
+        
+        if is_viewer:
+            # For viewers, ensure server tracks exist and add them
+            if server_video_track is None:
+                server_video_track = VideoTransformTrack()
+                logger.info("Created server video track for viewer")
+            if server_audio_track is None:
+                server_audio_track = AudioTransformTrack()
+                logger.info("Created server audio track for viewer")
+            
+            # Add the server's output tracks
+            pc.addTrack(server_video_track)
+            pc.addTrack(server_audio_track)
+            logger.info(f"Added server output tracks for viewer: {client_id}")
+            logger.info(f"Current video tracks available: {list(video_tracks.keys())}")
+            logger.info(f"Current audio tracks available: {list(audio_tracks.keys())}")
+        else:
+            # For regular clients, they will send their own tracks
+            logger.info(f"Regular client connection: {client_id}")
         
         # Handle the offer
         await pc.setRemoteDescription(offer)
@@ -409,8 +534,7 @@ async def offer_handler(request):
         answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
         
-        # Start active speaker detection loop
-        asyncio.create_task(active_speaker_detection_loop(server_video_track))
+        # Active speaker detection loop runs globally
         
         return web.Response(
             content_type="application/json",
@@ -427,12 +551,20 @@ async def offer_handler(request):
         return web.Response(status=500, text="Internal Server Error")
 
 
-async def active_speaker_detection_loop(video_transform):
+async def active_speaker_detection_loop():
     """Background task for active speaker detection"""
+    global server_video_track, server_audio_track
+    
     while True:
         try:
             await detect_active_speaker()
-            video_transform.set_active_speaker(active_speaker_id)
+            
+            # Only update tracks if they exist
+            if server_video_track:
+                server_video_track.set_active_speaker(active_speaker_id)
+            if server_audio_track:
+                server_audio_track.set_active_speaker(active_speaker_id)
+                
             await asyncio.sleep(0.1)  # Check every 100ms
         except Exception as e:
             logger.error(f"Error in speaker detection loop: {e}")
@@ -643,6 +775,9 @@ async def main():
     
     site = web.TCPSite(runner, '0.0.0.0', 9000)
     await site.start()
+    
+    # Start the active speaker detection loop
+    asyncio.create_task(active_speaker_detection_loop())
     
     logger.info("Server running on http://0.0.0.0:9000")
     logger.info("Access the client at: http://YOUR_IP:9000")

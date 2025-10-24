@@ -79,7 +79,7 @@
 
                             <!-- Overlay Control Buttons -->
                             <button id="muteBtn" class="absolute bottom-4 left-4 w-12 h-12 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hidden">
-                                <span class="text-xl">🔊</span>
+                                <span class="text-xl">🎤</span>
                             </button>
 
                             <button id="stopBtn" class="absolute bottom-4 right-4 w-12 h-12 bg-red-500/80 hover:bg-red-600/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hidden">
@@ -678,10 +678,10 @@
         function updateMuteButton() {
             if (isMuted) {
                 muteBtn.className = 'absolute bottom-4 left-4 w-12 h-12 bg-red-500/80 hover:bg-red-600/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110';
-                muteBtn.innerHTML = '<span class="text-xl">🔇</span>';
+                muteBtn.innerHTML = '<span class="text-xl">🎤</span>';
             } else {
                 muteBtn.className = 'absolute bottom-4 left-4 w-12 h-12 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110';
-                muteBtn.innerHTML = '<span class="text-xl">🔊</span>';
+                muteBtn.innerHTML = '<span class="text-xl">🎤</span>';
             }
         }
 
