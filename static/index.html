@@ -27,6 +27,10 @@
         .video-container {
             overflow: hidden;
         }
+        
+        #muteIcon {
+            filter: brightness(0) invert(1);
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen p-4">
@@ -71,14 +75,20 @@
                                         <div class="w-8 h-8 bg-gradient-to-r from-indigo-500/80 to-purple-600/80 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                             <span id="overlayInitial">U</span>
                                         </div>
-                                        <div id="overlayName" class="font-bold text-sm text-white drop-shadow-lg">Unknown</div>
+                                        <div class="flex items-center space-x-2">
+                                            <div id="overlayName" class="font-bold text-sm text-white drop-shadow-lg">Unknown</div>
+                                            <!-- Mute Icon -->
+                                            <img id="muteIcon" src="mute-mic-icon.png" alt="Muted" class="w-4 h-4 hidden">
+                                        </div>
                                     </div>
                                     <div id="overlayChannel" class="text-sm font-bold text-white drop-shadow-lg">#N/A</div>
                                 </div>
                             </div>
 
+                            <!-- Server Mute Status Overlay removed -->
+
                             <!-- Overlay Control Buttons -->
-                            <button id="muteBtn" class="absolute bottom-4 left-4 w-12 h-12 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110 hidden">
+                            <button id="muteBtn" class="absolute bottom-4 left-4 w-12 h-12 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110">
                                 <span class="text-xl">🎤</span>
                             </button>
 
@@ -196,7 +206,7 @@
         let analyser = null;
         let animationId = null;
         let audioTrack = null;
-        let isMuted = false;
+        let isLocalMuted = false; // Local microphone mute status
         let userName = '';
         let channelNumber = '';
 
@@ -219,6 +229,7 @@
             videoSection.classList.remove('hidden');
             controlsSection.classList.remove('lg:w-1/2');
             controlsSection.classList.add('lg:w-1/2');
+            showControlButtons(); // Show mute and stop buttons
             
             // Debug video element
             console.log('Video section shown');
@@ -231,6 +242,8 @@
             videoSection.classList.add('hidden');
             controlsSection.classList.remove('lg:w-1/2');
             controlsSection.classList.add('w-full');
+            
+            // Server mute overlay removed
         }
 
         // Show/hide control buttons
@@ -273,14 +286,18 @@
             const overlayInitial = document.getElementById('overlayInitial');
             const overlayName = document.getElementById('overlayName');
             const overlayChannel = document.getElementById('overlayChannel');
+            const muteIcon = document.getElementById('muteIcon');
             
-            if (overlayInitial && overlayName && overlayChannel) {
+            if (overlayInitial && overlayName && overlayChannel && muteIcon) {
                 const name = userNameInput.value.trim() || 'Unknown';
                 const channel = channelSelect.value || 'N/A';
                 
                 overlayInitial.textContent = name.charAt(0).toUpperCase();
                 overlayName.textContent = name;
-                overlayChannel.textContent = `#${channel}`;
+                overlayChannel.textContent = `Ch ${channel}`;
+                
+                // Hide mute icon initially
+                muteIcon.classList.add('hidden');
             }
         }
 
@@ -313,6 +330,7 @@
                 hideInfoForm();
                 updateVideoOverlay();
                 updateButtonText(true);
+                        // Server mute status overlay removed
             } else if (status === 'connecting') {
                 statusIndicator.classList.add('bg-yellow-500');
                 hideVideoSection();
@@ -327,6 +345,88 @@
                 showStartButton();
                 showInfoForm();
                 updateButtonText(false);
+            }
+        }
+
+        // Update video overlay with client status
+        function updateVideoOverlayWithStatus(clientInfo, isMuted, isActiveSpeaker) {
+            const overlayInitial = document.getElementById('overlayInitial');
+            const overlayName = document.getElementById('overlayName');
+            const overlayChannel = document.getElementById('overlayChannel');
+            const muteIcon = document.getElementById('muteIcon');
+            
+            if (overlayInitial && overlayName && overlayChannel && muteIcon && clientInfo) {
+                overlayInitial.textContent = clientInfo.name.charAt(0).toUpperCase();
+                overlayName.textContent = clientInfo.name;
+                overlayChannel.textContent = 'Ch ' + clientInfo.channel;
+                
+                // Show/hide mute icon based on status
+                if (isMuted) {
+                    muteIcon.classList.remove('hidden');
+                } else {
+                    muteIcon.classList.add('hidden');
+                }
+            }
+        }
+
+        // Server mute status overlay removed
+
+        // Server mute status checking
+        let serverMuteStatusInterval = null;
+
+        function startServerMuteStatusCheck() {
+            // Check immediately
+            checkServerMuteStatus();
+            
+            // Then check every 2 seconds
+            serverMuteStatusInterval = setInterval(checkServerMuteStatus, 2000);
+        }
+
+        function stopServerMuteStatusCheck() {
+            if (serverMuteStatusInterval) {
+                clearInterval(serverMuteStatusInterval);
+                serverMuteStatusInterval = null;
+            }
+        }
+
+        async function checkServerMuteStatus() {
+            try {
+                const response = await fetch('/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Get current user info from form
+                    const currentUserName = userNameInput.value.trim();
+                    const currentChannel = parseInt(channelSelect.value);
+                    
+                    // Find this client in the status response
+                    let clientId = null;
+                    let clientInfo = null;
+                    
+                    // Look for this client in client_info
+                    for (const [id, info] of Object.entries(data.client_info || {})) {
+                        if (id.startsWith('client_') && info.name === currentUserName && info.channel == currentChannel) {
+                            clientId = id;
+                            clientInfo = info;
+                            break;
+                        }
+                    }
+                    
+                    if (clientId) {
+                        const mutedClients = data.muted_clients || [];
+                        const isMuted = mutedClients.includes(clientId);
+                        const isActiveSpeaker = data.active_speaker === clientId;
+                        
+                        // Update overlay with name and status
+                        updateVideoOverlayWithStatus(clientInfo, isMuted, isActiveSpeaker);
+                        
+                        console.log(`Client status: ${clientInfo.name} - ${isMuted ? 'Muted' : 'Unmuted'} - ${isActiveSpeaker ? 'Speaking' : 'Not Speaking'}`);
+                    } else {
+                        console.log('Client not found in status response');
+                    }
+                }
+            } catch (error) {
+                console.log('Could not check server mute status:', error);
             }
         }
 
@@ -509,10 +609,11 @@
 
                 updateStatus('connecting', 'Connecting to server...');
 
-                // Create peer connection
-                pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
+                // Get RTC configuration from server
+                const rtcConfig = await fetch('/rtc-config').then(r => r.json());
+                
+                // Create peer connection with server configuration
+                pc = new RTCPeerConnection(rtcConfig);
 
                 // Add local tracks and store audio track reference
                 localStream.getTracks().forEach(track => {
@@ -544,14 +645,18 @@
                     if (pc.connectionState === 'connected') {
                         updateStatus('connected', 'Connected - Streaming to server');
                         
-                        // Restore mute state after connection
+                        // Restore local mute state after connection
                         if (audioTrack) {
-                            audioTrack.enabled = !isMuted;
+                            audioTrack.enabled = !isLocalMuted;
                             updateMuteButton();
                         }
+                        
+                        // Start checking server mute status
+                        startServerMuteStatusCheck();
                     } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
                         updateStatus('disconnected', 'Connection lost');
                         startBtn.disabled = false;
+                        stopServerMuteStatusCheck();
                     }
                 };
 
@@ -613,7 +718,6 @@
         // Save user preferences to localStorage
         function saveUserPreferences() {
             const preferences = {
-                isMuted: isMuted,
                 userName: userNameInput.value.trim(),
                 channelNumber: channelSelect.value,
                 timestamp: Date.now()
@@ -637,7 +741,6 @@
                     const data = JSON.parse(saved);
                     // Only restore if saved within last 7 days
                     if (Date.now() - data.timestamp < 7 * 24 * 60 * 60 * 1000) {
-                        isMuted = data.isMuted || false;
                         if (data.userName) {
                             userNameInput.value = data.userName;
                         }
@@ -653,62 +756,51 @@
             return false;
         }
 
-        // Save mute state to localStorage (legacy function for backward compatibility)
-        function saveMuteState() {
-            saveUserPreferences();
-        }
-
-        // Load mute state from localStorage (legacy function for backward compatibility)
-        function loadMuteState() {
-            return loadUserPreferences();
-        }
+        // Mute state functions removed - server controls mute status
 
         // Clear saved preferences (for testing or reset)
         function clearUserPreferences() {
             localStorage.removeItem('conferencePreferences');
             localStorage.removeItem('conferenceMuteState'); // Clear legacy data too
-            isMuted = false;
             userNameInput.value = '';
             channelSelect.value = '';
-            updateMuteButton();
             console.log('User preferences cleared');
         }
 
-        // Update mute button appearance
+        // Update local mute button appearance
         function updateMuteButton() {
-            if (isMuted) {
+            if (isLocalMuted) {
                 muteBtn.className = 'absolute bottom-4 left-4 w-12 h-12 bg-red-500/80 hover:bg-red-600/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110';
-                muteBtn.innerHTML = '<span class="text-xl">🎤</span>';
+                muteBtn.innerHTML = '<span class="text-xl">🔇</span>';
             } else {
                 muteBtn.className = 'absolute bottom-4 left-4 w-12 h-12 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all duration-200 hover:scale-110';
                 muteBtn.innerHTML = '<span class="text-xl">🎤</span>';
             }
         }
 
-        // Mute/unmute audio
-        function toggleMute() {
+        // Toggle local microphone mute
+        function toggleLocalMute() {
             try {
                 if (!audioTrack) {
                     console.error('No audio track available');
                     return;
                 }
                 
-                isMuted = !isMuted;
-                audioTrack.enabled = !isMuted;
+                isLocalMuted = !isLocalMuted;
+                audioTrack.enabled = !isLocalMuted;
                 
                 // Update button appearance
                 updateMuteButton();
                 
-                // Save state
-                saveMuteState();
-                
-                console.log(isMuted ? 'Audio muted' : 'Audio unmuted');
+                console.log(isLocalMuted ? 'Local microphone muted' : 'Local microphone unmuted');
                 
             } catch (error) {
-                console.error('Error toggling mute:', error);
-                showError('Error toggling mute: ' + error.message);
+                console.error('Error toggling local mute:', error);
+                showError('Error toggling local mute: ' + error.message);
             }
         }
+
+        // Mute functionality removed - server controls mute status
 
         // Stop camera and WebRTC connection
         function stop() {
@@ -738,9 +830,9 @@
                 startBtn.disabled = false;
                 audioLevelEl.style.width = '0%';
                 
-                // Reset audio track but keep mute state
+                // Reset audio track and local mute state
                 audioTrack = null;
-                // Don't reset isMuted - keep the user's preference
+                isLocalMuted = false;
                 updateMuteButton();
                 
                 console.log('Camera stopped');
@@ -753,7 +845,7 @@
 
         // Event listeners
         startBtn.addEventListener('click', start);
-        muteBtn.addEventListener('click', toggleMute);
+        muteBtn.addEventListener('click', toggleLocalMute);
         stopBtn.addEventListener('click', stop);
         
         // Save preferences when form fields change

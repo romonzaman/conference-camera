@@ -1,0 +1,67 @@
+# WebRTC Configuration Settings
+# STUN and TURN server configuration for WebRTC connections
+
+# STUN Servers (free, no authentication required)
+STUN_SERVERS = [
+    "stun:stun.l.google.com:19302",
+    "stun:stun1.l.google.com:19302",
+    "stun:stun2.l.google.com:19302",
+    "stun:stun3.l.google.com:19302",
+    "stun:stun4.l.google.com:19302",
+]
+
+# TURN Servers (for NAT traversal, requires authentication)
+# Add your TURN server credentials here
+TURN_SERVERS = [
+    # Example TURN server configuration:
+    # {
+    #     "urls": "turn:your-turn-server.com:3478",
+    #     "username": "your-username",
+    #     "credential": "your-password"
+    # },
+    # {
+    #     "urls": "turns:your-turn-server.com:5349",
+    #     "username": "your-username", 
+    #     "credential": "your-password"
+    # }
+]
+
+# WebRTC Configuration
+# This combines STUN and TURN servers for RTCConfiguration
+def get_rtc_configuration():
+    """
+    Returns RTCConfiguration object with STUN and TURN servers
+    """
+    ice_servers = []
+    
+    # Add STUN servers
+    for stun_url in STUN_SERVERS:
+        ice_servers.append({"urls": stun_url})
+    
+    # Add TURN servers
+    ice_servers.extend(TURN_SERVERS)
+    
+    return {
+        "iceServers": ice_servers,
+        "iceCandidatePoolSize": 10
+    }
+
+# Server Configuration
+SERVER_HOST = "0.0.0.0"
+SERVER_PORT = 8080
+
+# Logging Configuration
+DEFAULT_LOG_LEVEL = "INFO"
+LOG_LEVELS = ["DEBUG", "INFO", "NOTICE", "WARNING", "ERROR"]
+
+# Conference Settings
+MAX_CLIENTS = 50
+ACTIVE_SPEAKER_TIMEOUT = 3.0  # seconds
+AUDIO_LEVEL_THRESHOLD = 0.01
+AUDIO_MONITORING_INTERVAL = 0.1  # seconds
+
+# Video/Audio Settings
+VIDEO_CODEC = "VP8"
+AUDIO_CODEC = "opus"
+VIDEO_BITRATE = 1000000  # 1 Mbps
+AUDIO_BITRATE = 64000    # 64 kbps

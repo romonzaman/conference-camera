@@ -37,6 +37,13 @@
                     <div class="flex items-center space-x-3 text-white/80 text-xs">
                         <span id="totalClients">0 clients</span>
                         <span id="activeSpeaker">No active speaker</span>
+                        <!-- Log Level Controls -->
+                        <div class="flex items-center space-x-1">
+                            <span class="text-white/60 text-xs">Log:</span>
+                            <button id="logDebug" onclick="setLogLevel('DEBUG')" class="px-2 py-1 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">DEBUG</button>
+                            <button id="logInfo" onclick="setLogLevel('INFO')" class="px-2 py-1 text-xs bg-white/30 hover:bg-white/40 rounded transition-colors">INFO</button>
+                            <button id="logNotice" onclick="setLogLevel('NOTICE')" class="px-2 py-1 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors">NOTICE</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -201,7 +208,27 @@
                 return;
             }
 
-            friendsList.innerHTML = clients.map(([clientId, info]) => {
+            // Sort clients: viewers first, then participants by channel number
+            const sortedClients = clients.sort(([clientIdA, infoA], [clientIdB, infoB]) => {
+                const isViewerA = clientIdA.startsWith('viewer_');
+                const isViewerB = clientIdB.startsWith('viewer_');
+                
+                // Viewers go first
+                if (isViewerA && !isViewerB) return -1;
+                if (!isViewerA && isViewerB) return 1;
+                
+                // If both are viewers, sort by client ID
+                if (isViewerA && isViewerB) {
+                    return clientIdA.localeCompare(clientIdB);
+                }
+                
+                // If both are participants, sort by channel number
+                const channelA = infoA.channel || 0;
+                const channelB = infoB.channel || 0;
+                return channelA - channelB;
+            });
+
+            friendsList.innerHTML = sortedClients.map(([clientId, info]) => {
                 const isActiveSpeaker = clientId === activeSpeakerId;
                 const hasAudio = clientId in audioLevels;
                 const isMuted = mutedClients.includes(clientId);
@@ -350,6 +377,42 @@
             try {
                 console.log('Unmuting client:', clientId);
                 
+                // First, get current status to find all participants
+                const statusResponse = await fetch('/status');
+                if (!statusResponse.ok) {
+                    throw new Error('Failed to get current status');
+                }
+                
+                const statusData = await statusResponse.json();
+                const clientInfo = statusData.client_info || {};
+                const allClientIds = Object.keys(clientInfo);
+                
+                // Mute all other participants first (only if they're not already muted)
+                const mutedClients = statusData.muted_clients || [];
+                const mutePromises = allClientIds
+                    .filter(id => id !== clientId && !id.startsWith('viewer_')) // Don't mute viewers
+                    .filter(id => !mutedClients.includes(id)) // Only mute if not already muted
+                    .map(async (id) => {
+                        try {
+                            const response = await fetch('/mute', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ client_id: id })
+                            });
+                            return response.ok;
+                        } catch (error) {
+                            console.error(`Error muting ${id}:`, error);
+                            return false;
+                        }
+                    });
+                
+                // Wait for all mute operations to complete
+                await Promise.all(mutePromises);
+                console.log('Muted all other participants');
+                
+                // Now unmute the selected participant
                 const response = await fetch('/mute', {
                     method: 'POST',
                     headers: {
@@ -403,6 +466,43 @@
             } catch (error) {
                 console.error('Error kicking user:', error);
                 alert('Error kicking user');
+            }
+        }
+
+        // Log level control
+        async function setLogLevel(level) {
+            try {
+                const response = await fetch('/log-level', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ level: level })
+                });
+                
+                if (response.ok) {
+                    const result = await response.text();
+                    console.log('Log level changed:', result);
+                    
+                    // Update button states
+                    document.querySelectorAll('[id^="log"]').forEach(btn => {
+                        btn.classList.remove('bg-white/30', 'bg-white/40');
+                        btn.classList.add('bg-white/20');
+                    });
+                    
+                    const activeBtn = document.getElementById(`log${level}`);
+                    if (activeBtn) {
+                        activeBtn.classList.remove('bg-white/20');
+                        activeBtn.classList.add('bg-white/30');
+                    }
+                } else {
+                    const error = await response.text();
+                    console.error('Log level change failed:', error);
+                    alert(`Error: ${error}`);
+                }
+            } catch (error) {
+                console.error('Error changing log level:', error);
+                alert('Error changing log level');
             }
         }
 

@@ -9,19 +9,19 @@
 <body>
     <div class="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
         <!-- Agreement Screen -->
-        <div id="proceedScreen" class="min-h-screen flex items-center justify-center p-4">
-            <div class="max-w-4xl w-full text-white">
-                <div class="text-center mb-4">
-                    <div class="text-6xl mb-3">📹</div>
-                    <h1 class="text-3xl font-bold mb-2">Conference Viewer</h1>
-                    <p class="text-lg opacity-80">Access live conference video and audio streams</p>
+        <div id="proceedScreen" class="min-h-screen flex items-center justify-center p-3">
+            <div class="max-w-3xl w-full text-white">
+                <div class="text-center mb-3">
+                    <div class="text-4xl mb-2">📹</div>
+                    <h1 class="text-2xl font-bold mb-1">Conference Viewer</h1>
+                    <p class="text-sm opacity-80">Access live conference video and audio streams</p>
                 </div>
                 
                 <!-- Agreement Content -->
-                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-4 max-h-80 overflow-y-auto">
-                    <h2 class="text-xl font-bold mb-4 text-center">Terms of Service & Privacy Agreement</h2>
+                <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 mb-3 max-h-60 overflow-y-auto">
+                    <h2 class="text-lg font-bold mb-3 text-center">Terms of Service & Privacy Agreement</h2>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs leading-relaxed">
                         <div>
                             <h3 class="text-sm font-semibold mb-2 text-blue-300">1. Service Access</h3>
                             <p>By accessing this conference viewer, you agree to use this service responsibly and in accordance with applicable laws and regulations.</p>
@@ -63,11 +63,11 @@
                         </label>
                     </div>
                     
-                    <button id="proceedBtn" class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors" disabled>
+                    <button id="proceedBtn" class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors" disabled>
                         Accept Agreement & Continue
                     </button>
                     
-                    <div class="text-xs text-white/60 mt-2">
+                    <div class="text-xs text-white/60 mt-1">
                         By clicking "Accept Agreement & Continue", you acknowledge that you have read, understood, and agree to be bound by these terms.
                     </div>
                 </div>
@@ -78,20 +78,26 @@
         <div id="viewerContent" style="display: none;">
             <!-- Header -->
             <div class="bg-black/20 backdrop-blur-sm border-b border-white/10">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex items-center justify-between h-16">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                <span class="text-white text-xl">📹</span>
+                <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+                    <div class="flex items-center justify-between h-12">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-6 h-6 bg-white/20 rounded-lg flex items-center justify-center">
+                                <span class="text-white text-sm">📹</span>
                             </div>
-                            <h1 class="text-white text-xl font-bold">Conference Viewer</h1>
+                            <h1 class="text-white text-lg font-bold">Conference Viewer</h1>
                         </div>
-                        <div class="flex items-center space-x-4">
-                            <div class="flex items-center space-x-4">
-                                <div id="statusIndicator" class="w-4 h-4 rounded-full bg-yellow-400 animate-pulse"></div>
-                                <span id="statusText" class="text-white font-medium">Loading...</span>
+                        <div class="flex items-center space-x-3">
+                            <!-- View Mode Selector -->
+                            <div class="flex items-center space-x-1 bg-white/10 rounded-lg p-1">
+                                <button id="viewModeCompact" class="px-2 py-1 text-xs bg-white/20 hover:bg-white/30 rounded transition-colors" onclick="setViewMode('compact')">Compact</button>
+                                <button id="viewModeTile" class="px-2 py-1 text-xs bg-white/10 hover:bg-white/30 rounded transition-colors" onclick="setViewMode('tile')">Tile</button>
+                                <button id="viewModeDefault" class="px-2 py-1 text-xs bg-white/10 hover:bg-white/30 rounded transition-colors" onclick="setViewMode('default')">Default</button>
                             </div>
-                            <div class="flex items-center space-x-4 text-white/80 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <div id="statusIndicator" class="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></div>
+                                <span id="statusText" class="text-white text-sm font-medium">Loading...</span>
+                            </div>
+                            <div class="flex items-center space-x-3 text-white/80 text-xs">
                                 <span id="totalClients">0 clients</span>
                                 <span id="activeSpeaker">No active speaker</span>
                             </div>
@@ -101,38 +107,97 @@
             </div>
 
             <!-- Video Section -->
-            <div class="p-6">
-                <div class="relative max-w-4xl mx-auto mb-8">
-                    <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
-                        <video id="serverVideo" class="w-full h-full object-contain" autoplay playsinline></video>
-                        <div id="videoPlaceholder" class="w-full h-full flex items-center justify-center text-white text-2xl">
-                            <div class="text-center">
-                                <div class="text-6xl mb-4">📹</div>
-                                <div>Server Video Feed</div>
-                                <div class="text-sm mt-2 opacity-75">Waiting for active speaker video...</div>
+            <div class="p-3">
+                <!-- Active Speaker Info -->
+                <div class="max-w-6xl mx-auto mb-3">
+                    <div id="speakerInfo" class="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-white text-center" style="display: none;">
+                        <div class="flex items-center justify-center space-x-3">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                <span class="text-xs font-medium">Active Speaker:</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span id="speakerName" class="text-sm font-bold text-blue-300">Unknown</span>
+                                <span id="speakerChannel" class="text-xs bg-blue-500/30 px-2 py-1 rounded-full">Channel 0</span>
                             </div>
                         </div>
-                        <!-- Audio element for audio playback -->
-                        <audio id="serverAudio" autoplay playsinline></audio>
+                    </div>
+                </div>
+                
+                <!-- Compact Mode (Active Speaker Only) -->
+                <div id="compactMode" class="view-mode">
+                    <div class="relative max-w-4xl mx-auto mb-4">
+                        <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                            <video id="serverVideo" class="w-full h-full object-contain" autoplay playsinline></video>
+                            <div id="videoPlaceholder" class="w-full h-full flex items-center justify-center text-white text-lg">
+                                <div class="text-center">
+                                    <div class="text-4xl mb-2">📹</div>
+                                    <div>Server Video Feed</div>
+                                    <div class="text-xs mt-1 opacity-75">Waiting for active speaker video...</div>
+                                </div>
+                            </div>
+                            <!-- Audio element for audio playback -->
+                            <audio id="serverAudio" autoplay playsinline></audio>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tile Mode (All Participants as Cards) -->
+                <div id="tileMode" class="view-mode" style="display: none;">
+                    <div class="max-w-6xl mx-auto">
+                        <div id="participantTiles" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            <!-- Participant tiles will be dynamically generated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Default Mode (70% Active + 30% Others) -->
+                <div id="defaultMode" class="view-mode" style="display: none;">
+                    <div class="max-w-6xl mx-auto">
+                        <div class="flex gap-3">
+                            <!-- Active Speaker (70%) -->
+                            <div class="flex-1" style="flex: 0.7;">
+                                <div class="aspect-video bg-black rounded-xl overflow-hidden shadow-lg">
+                                    <video id="defaultActiveVideo" class="w-full h-full object-contain" autoplay playsinline></video>
+                                    <div id="defaultActivePlaceholder" class="w-full h-full flex items-center justify-center text-white text-lg">
+                                        <div class="text-center">
+                                            <div class="text-4xl mb-2">📹</div>
+                                            <div>Active Speaker</div>
+                                            <div class="text-xs mt-1 opacity-75">Waiting for video...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Other Participants (30%) -->
+                            <div class="flex-1" style="flex: 0.3;">
+                                <div class="space-y-2">
+                                    <h3 class="text-white text-sm font-medium mb-2">Other Participants</h3>
+                                    <div id="otherParticipants" class="space-y-2 max-h-96 overflow-y-auto">
+                                        <!-- Other participant cards will be dynamically generated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Stats Section -->
-            <div class="px-6 pb-6">
+            <div class="px-3 pb-3">
                 <div class="max-w-4xl mx-auto">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-                            <div class="text-2xl font-bold text-white" id="connectedClients">0</div>
-                            <div class="text-white/80 text-sm">Connected Clients</div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+                            <div class="text-lg font-bold text-white" id="connectedClients">0</div>
+                            <div class="text-white/80 text-xs">Connected Clients</div>
                         </div>
-                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-                            <div class="text-2xl font-bold text-white" id="videoTracks">0</div>
-                            <div class="text-white/80 text-sm">Video Tracks</div>
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+                            <div class="text-lg font-bold text-white" id="videoTracks">0</div>
+                            <div class="text-white/80 text-xs">Video Tracks</div>
                         </div>
-                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-                            <div class="text-2xl font-bold text-white" id="activeSpeakerName">None</div>
-                            <div class="text-white/80 text-sm">Active Speaker</div>
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center">
+                            <div class="text-lg font-bold text-white" id="activeSpeakerName">None</div>
+                            <div class="text-white/80 text-xs">Active Speaker</div>
                         </div>
                     </div>
                 </div>
@@ -158,6 +223,10 @@
         const activeSpeakerNameEl = document.getElementById('activeSpeakerName');
         const videoPlaceholder = document.getElementById('videoPlaceholder');
         const serverAudio = document.getElementById('serverAudio');
+        
+        // View mode variables
+        let currentViewMode = 'compact';
+        let participantData = {};
         
         // Debug audio element
         console.log('Audio element found:', serverAudio);
@@ -190,10 +259,11 @@
             try {
                 console.log('Connecting to WebRTC for video and audio...');
                 
-                // Create peer connection
-                pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
+                // Get RTC configuration from server
+                const rtcConfig = await fetch('/rtc-config').then(r => r.json());
+                
+                // Create peer connection with server configuration
+                pc = new RTCPeerConnection(rtcConfig);
 
                 // Handle incoming tracks
                 pc.ontrack = (event) => {
@@ -365,6 +435,22 @@
             console.log('Current video display:', serverVideo.style.display);
             console.log('Current placeholder display:', videoPlaceholder.style.display);
             
+            // Update speaker info display
+            const speakerInfo = document.getElementById('speakerInfo');
+            const speakerName = document.getElementById('speakerName');
+            const speakerChannel = document.getElementById('speakerChannel');
+            
+            if (data.active_speaker && data.client_info && data.client_info[data.active_speaker]) {
+                // Show speaker info
+                const speakerData = data.client_info[data.active_speaker];
+                speakerName.textContent = speakerData.name || 'Unknown';
+                speakerChannel.textContent = `Channel ${speakerData.channel || 0}`;
+                speakerInfo.style.display = 'block';
+            } else {
+                // Hide speaker info
+                speakerInfo.style.display = 'none';
+            }
+            
             if (data.active_speaker && data.video_tracks > 0) {
                 // Show video and hide placeholder
                 serverVideo.style.display = 'block';
@@ -421,6 +507,187 @@
             console.log('Audio volume:', serverAudio.volume);
             console.log('Audio readyState:', serverAudio.readyState);
         }
+        
+        // View Mode Functions
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            
+            // Hide all view modes
+            document.querySelectorAll('.view-mode').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Update button states
+            document.querySelectorAll('[id^="viewMode"]').forEach(btn => {
+                btn.classList.remove('bg-white/20', 'bg-white/30');
+                btn.classList.add('bg-white/10');
+            });
+            
+            // Show selected mode and update button
+            const modeElement = document.getElementById(mode + 'Mode');
+            const buttonElement = document.getElementById('viewMode' + mode.charAt(0).toUpperCase() + mode.slice(1));
+            
+            if (modeElement) {
+                modeElement.style.display = 'block';
+            }
+            if (buttonElement) {
+                buttonElement.classList.remove('bg-white/10');
+                buttonElement.classList.add('bg-white/20');
+            }
+            
+            // Update video displays based on mode
+            updateViewMode();
+        }
+        
+        function updateViewMode() {
+            if (currentViewMode === 'compact') {
+                updateCompactMode();
+            } else if (currentViewMode === 'tile') {
+                updateTileMode();
+            } else if (currentViewMode === 'default') {
+                updateDefaultMode();
+            }
+        }
+        
+        function updateCompactMode() {
+            // Compact mode uses the main serverVideo element
+            // This is already handled by the existing updateVideoStatus function
+        }
+        
+        function updateTileMode() {
+            const container = document.getElementById('participantTiles');
+            container.innerHTML = '';
+            
+            // Add active speaker tile with video
+            if (participantData.active_speaker && participantData.client_info) {
+                const speaker = participantData.client_info[participantData.active_speaker];
+                if (speaker) {
+                    const tile = createParticipantTile(participantData.active_speaker, speaker, true);
+                    container.appendChild(tile);
+                    
+                    // Assign video stream to active speaker tile
+                    const videoElement = tile.querySelector('video');
+                    const placeholderElement = tile.querySelector('[id^="placeholder-"]');
+                    
+                    if (serverVideo.srcObject) {
+                        videoElement.srcObject = serverVideo.srcObject;
+                        videoElement.style.display = 'block';
+                        placeholderElement.style.display = 'none';
+                    } else {
+                        videoElement.style.display = 'none';
+                        placeholderElement.style.display = 'flex';
+                    }
+                }
+            }
+            
+            // Add other participants (placeholders for now)
+            if (participantData.client_info) {
+                Object.entries(participantData.client_info).forEach(([clientId, info]) => {
+                    if (clientId !== participantData.active_speaker) {
+                        const tile = createParticipantTile(clientId, info, false);
+                        container.appendChild(tile);
+                        
+                        // Show placeholder for non-active participants
+                        const videoElement = tile.querySelector('video');
+                        const placeholderElement = tile.querySelector('[id^="placeholder-"]');
+                        videoElement.style.display = 'none';
+                        placeholderElement.style.display = 'flex';
+                    }
+                });
+            }
+        }
+        
+        function updateDefaultMode() {
+            // Update active speaker video (70% area)
+            const activeVideo = document.getElementById('defaultActiveVideo');
+            const activePlaceholder = document.getElementById('defaultActivePlaceholder');
+            
+            if (participantData.active_speaker && participantData.video_tracks > 0) {
+                // Use the main video stream for active speaker
+                if (serverVideo.srcObject) {
+                    activeVideo.srcObject = serverVideo.srcObject;
+                    activeVideo.style.display = 'block';
+                    activePlaceholder.style.display = 'none';
+                } else {
+                    activeVideo.style.display = 'none';
+                    activePlaceholder.style.display = 'flex';
+                }
+            } else {
+                activeVideo.style.display = 'none';
+                activePlaceholder.style.display = 'flex';
+            }
+            
+            // Update other participants (30% area)
+            const container = document.getElementById('otherParticipants');
+            container.innerHTML = '';
+            
+            if (participantData.client_info) {
+                Object.entries(participantData.client_info).forEach(([clientId, info]) => {
+                    if (clientId !== participantData.active_speaker) {
+                        const card = createSmallParticipantCard(clientId, info);
+                        container.appendChild(card);
+                    }
+                });
+            }
+        }
+        
+        function createParticipantTile(clientId, info, isActive) {
+            const tile = document.createElement('div');
+            tile.className = `aspect-video bg-black rounded-lg overflow-hidden shadow-lg relative ${isActive ? 'ring-2 ring-green-400' : ''}`;
+            tile.id = `tile-${clientId}`;
+            
+            tile.innerHTML = `
+                <video id="video-${clientId}" class="w-full h-full object-contain bg-black" autoplay playsinline muted></video>
+                <div id="placeholder-${clientId}" class="absolute inset-0 w-full h-full flex items-center justify-center text-white bg-black/50">
+                    <div class="text-center">
+                        <div class="text-2xl mb-1">${isActive ? '🎤' : '👤'}</div>
+                        <div class="text-sm font-medium">${info.name || 'Unknown'}</div>
+                        <div class="text-xs opacity-75">Channel ${info.channel || 0}</div>
+                        ${isActive ? '<div class="text-xs text-green-400 mt-1">● Active</div>' : ''}
+                    </div>
+                </div>
+                <div class="absolute bottom-2 left-2 right-2">
+                    <div class="bg-black/70 backdrop-blur-sm rounded px-2 py-1 text-white text-xs">
+                        <div class="font-medium truncate">${info.name || 'Unknown'}</div>
+                        <div class="opacity-75">Channel ${info.channel || 0}</div>
+                    </div>
+                </div>
+            `;
+            
+            return tile;
+        }
+        
+        function createSmallParticipantCard(clientId, info) {
+            const card = document.createElement('div');
+            card.className = 'bg-white/10 backdrop-blur-sm rounded-lg p-2 text-white';
+            
+            card.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                        <span class="text-sm">👤</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-medium truncate">${info.name || 'Unknown'}</div>
+                        <div class="text-xs opacity-75">Channel ${info.channel || 0}</div>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // Override updateVideoStatus to also update view modes
+        const originalUpdateVideoStatus = updateVideoStatus;
+        updateVideoStatus = function(data) {
+            // Store participant data for view modes
+            participantData = data;
+            
+            // Call original function
+            originalUpdateVideoStatus(data);
+            
+            // Update current view mode
+            updateViewMode();
+        };
         
         // Start monitoring when page loads
         startMonitoring();
