@@ -15,6 +15,9 @@ opencv-python>=4.5.0
 # Numerical computing
 numpy>=1.21.0
 
+# QR code generation
+qrcode[pil]>=7.4.0
+
 # Additional audio/video codecs (optional but recommended)
 # Uncomment if you need additional codec support:
 # av-python>=8.0.0

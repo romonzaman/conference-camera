@@ -766,6 +766,97 @@ async def friends_handler(request):
         )
 
 
+async def code_handler(request):
+    """Serve the QR code page"""
+    try:
+        with open('static/code.html', 'r') as f:
+            content = f.read()
+        return web.Response(content_type="text/html", text=content)
+    except FileNotFoundError:
+        return web.Response(
+            status=404, 
+            text="<h1>404 - File not found</h1><p>Please ensure static/code.html exists</p>"
+        )
+
+
+async def code_info_handler(request):
+    """Provide base URL information for QR code generation"""
+    try:
+        # Get the base URL from the request
+        scheme = request.headers.get('X-Forwarded-Proto', 'http')
+        host = request.headers.get('Host', request.host)
+        
+        # Construct the base URL
+        base_url = f"{scheme}://{host}"
+        
+        # Return the base URL as JSON
+        return web.Response(
+            content_type="application/json",
+            text=json.dumps({
+                "base_url": base_url,
+                "timestamp": time.time()
+            })
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting base URL: {e}")
+        return web.Response(
+            status=500,
+            content_type="application/json",
+            text=json.dumps({"error": "Internal Server Error"})
+        )
+
+
+async def qr_code_handler(request):
+    """Generate QR code image on server side"""
+    try:
+        import qrcode
+        from io import BytesIO
+        import base64
+        
+        # Get the base URL from the request
+        scheme = request.headers.get('X-Forwarded-Proto', 'http')
+        host = request.headers.get('Host', request.host)
+        base_url = f"{scheme}://{host}"
+        
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(base_url)
+        qr.make(fit=True)
+        
+        # Create image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convert to base64
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        img_str = base64.b64encode(buffer.getvalue()).decode()
+        
+        # Return as data URL
+        return web.Response(
+            content_type="text/plain",
+            text=f"data:image/png;base64,{img_str}"
+        )
+        
+    except ImportError:
+        logger.error("qrcode library not installed. Install with: pip install qrcode[pil]")
+        return web.Response(
+            status=500,
+            text="QR code generation not available. Please install qrcode library."
+        )
+    except Exception as e:
+        logger.error(f"Error generating QR code: {e}")
+        return web.Response(
+            status=500,
+            text="Error generating QR code"
+        )
+
+
 async def index_handler(request):
     """Serve the main HTML page"""
     try:
@@ -805,6 +896,9 @@ def create_app():
     app.router.add_get('/debug', debug_handler)
     app.router.add_get('/viewer', viewer_handler)
     app.router.add_get('/friends', friends_handler)
+    app.router.add_get('/code', code_handler)
+    app.router.add_get('/code-info', code_info_handler)
+    app.router.add_get('/qr-code', qr_code_handler)
     app.router.add_get('/video-feed', video_feed_handler)
     app.router.add_post('/mute', mute_handler)
     app.router.add_post('/kick', kick_handler)
